@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+dd/
+prompts/
+# IDEs
+.vscode/
+.idea/
+
+# Node
+node_modules/
+.next/
+npm-debug.log
+yarn-error.log
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db

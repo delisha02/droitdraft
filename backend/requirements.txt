@@ -1,0 +1,23 @@
+# Core Framework
+# (e.g., FastAPI, Starlette)
+
+# Database
+# (e.g., psycopg2-binary, sqlalchemy)
+
+# Vector Database
+# (e.g., chromadb)
+
+# AI/LLM
+# (e.g., groq, google-generativeai)
+
+# Data Processing
+# (e.g., pypdf, python-docx)
+
+# OCR
+# (e.g., pytesseract)
+
+# Authentication
+# (e.g., python-jose, passlib)
+
+# Utilities
+# (e.g., python-dotenv, uvicorn)
