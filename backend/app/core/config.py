@@ -10,10 +10,11 @@ class Settings(BaseSettings):
     CHROMA_HOST: str
     CHROMA_PORT: int
 
-    MINIO_ENDPOINT: str
-    MINIO_ACCESS_KEY: str
-    MINIO_SECRET_KEY: str
-    MINIO_BUCKET: str
+    GROQ_API_KEY: str
+    GEMINI_API_KEY: str
+
+    UPLOAD_DIR: str
+    PROCESSED_DIR: str
 
     # CORS
     CORS_ORIGINS: str
