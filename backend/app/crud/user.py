@@ -2,7 +2,7 @@
 This file contains CRUD operations for the User model.
 '''
 
-from typing import Any, Dict, Optional, Union
+from typing import Optional
 
 from sqlalchemy.orm import Session
 

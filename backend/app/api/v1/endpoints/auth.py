@@ -4,7 +4,7 @@ This file defines authentication routes (register, login, refresh, logout, me).
 
 from datetime import timedelta
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
