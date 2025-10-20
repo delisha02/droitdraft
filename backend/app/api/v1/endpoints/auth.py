@@ -26,7 +26,7 @@ def login_access_token(
     """
     OAuth2 compatible token login, get an access token for future requests
     """
-    user = crud_user.authenticate(
+    user = crud_user.user.authenticate(
         db, email=form_data.username, password=form_data.password
     )
     if not user:
@@ -61,11 +61,11 @@ def register(
     """
     Create new user.
     """
-    user = crud_user.get_user_by_email(db, email=user_in.email)
+    user = crud_user.user.get_by_email(db, email=user_in.email)
     if user:
         raise HTTPException(
             status_code=400,
             detail="The user with this username already exists in the system.",
         )
-    user = crud_user.create_user(db, obj_in=user_in)
+    user = crud_user.user.create(db, obj_in=user_in)
     return user
