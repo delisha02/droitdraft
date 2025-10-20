@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -170,6 +171,21 @@ const documentTypes = [
 export default function DashboardPage() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [isDemoOpen, setIsDemoOpen] = useState(false)
+  const router = useRouter()
+
+  useEffect(() => {
+    const isAuthenticated = localStorage.getItem("isAuthenticated");
+    if (isAuthenticated !== "true") {
+      router.push("/auth/signin");
+    }
+  }, [router]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("userEmail");
+    router.push("/auth/signin");
+  };
 
   const handleStartCreating = () => {
     // Scroll to document types section
@@ -201,8 +217,8 @@ export default function DashboardPage() {
               <Badge variant="secondary" className="bg-blue-100 text-blue-800">
                 Beta
               </Badge>
-              <Button variant="outline" size="sm" onClick={() => setIsAuthModalOpen(true)}>
-                Sign In
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                Logout
               </Button>
             </div>
           </div>
