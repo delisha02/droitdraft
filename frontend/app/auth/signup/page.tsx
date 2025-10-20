@@ -35,47 +35,47 @@ export default function SignUpPage() {
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
 
-    // Basic validation
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match")
-      setIsLoading(false)
-      return
-    }
-
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters long")
-      setIsLoading(false)
-      return
+      setError("Passwords do not match");
+      setIsLoading(false);
+      return;
     }
 
     if (!acceptTerms) {
-      setError("Please accept the terms and conditions")
-      setIsLoading(false)
-      return
+      setError("Please accept the terms and conditions");
+      setIsLoading(false);
+      return;
     }
-
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500))
 
     try {
-      // Here you would normally make an API call to create the user
-      // For now, we'll simulate success and store in localStorage
-      localStorage.setItem("isAuthenticated", "true")
-      localStorage.setItem("userEmail", formData.email)
-      localStorage.setItem("userName", `${formData.firstName} ${formData.lastName}`)
+      const response = await fetch("http://localhost:8000/api/v1/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          full_name: `${formData.firstName} ${formData.lastName}`,
+        }),
+      });
 
-      // Redirect to dashboard
-      router.push("/dashboard")
+      if (response.ok) {
+        router.push("/auth/signin");
+      } else {
+        const errorData = await response.json();
+        setError(errorData.detail || "Failed to create account.");
+      }
     } catch (error) {
-      setError("Failed to create account. Please try again.")
+      setError("An unexpected error occurred. Please try again.");
     }
 
-    setIsLoading(false)
-  }
+    setIsLoading(false);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">

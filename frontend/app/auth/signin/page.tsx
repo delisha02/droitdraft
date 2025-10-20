@@ -19,34 +19,39 @@ export default function SignInPage() {
   const [error, setError] = useState("")
   const router = useRouter()
 
-  // Temporary hardcoded credentials - replace with database connection later
-  const VALID_CREDENTIALS = {
-    email: "admin@droitdraft.com",
-    password: "admin123",
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      const response = await fetch("http://localhost:8000/api/v1/auth/login/access-token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          username: email,
+          password: password,
+        }),
+      });
 
-    // Check credentials (replace with actual authentication later)
-    if (email === VALID_CREDENTIALS.email && password === VALID_CREDENTIALS.password) {
-      // Store auth state (replace with proper session management later)
-      localStorage.setItem("isAuthenticated", "true")
-      localStorage.setItem("userEmail", email)
-
-      // Redirect to dashboard
-      router.push("/dashboard")
-    } else {
-      setError("Invalid email or password.")
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem("isAuthenticated", "true");
+        localStorage.setItem("accessToken", data.access_token);
+        localStorage.setItem("userEmail", email);
+        router.push("/dashboard");
+      } else {
+        const errorData = await response.json();
+        setError(errorData.detail || "Invalid email or password.");
+      }
+    } catch (error) {
+      setError("An unexpected error occurred. Please try again.");
     }
 
-    setIsLoading(false)
-  }
+    setIsLoading(false);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
