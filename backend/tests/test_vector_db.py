@@ -1,6 +1,11 @@
 import pytest
 from unittest.mock import MagicMock
 
+# Mock DefaultEmbeddingFunction to prevent onnxruntime import issues
+@pytest.fixture(autouse=True)
+def mock_default_embedding_function(mocker):
+    mocker.patch('chromadb.utils.embedding_functions.DefaultEmbeddingFunction', MagicMock())
+
 def test_chromadb_connection(mocker):
     """
     Tests the ChromaDB connection logic by mocking the chromadb client.

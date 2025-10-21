@@ -1,4 +1,3 @@
-import pytest
 from app.agents.document_processor.ner_engine import extract_entities
 
 def test_extract_entities():

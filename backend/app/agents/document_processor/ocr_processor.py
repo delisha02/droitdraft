@@ -1,5 +1,4 @@
 import pytesseract
-from PIL import Image
 from app.agents.document_processor.image_processor import preprocess_image
 
 def extract_text_from_image(file_path: str) -> str:

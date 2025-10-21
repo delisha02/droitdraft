@@ -11,7 +11,6 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.models import models
-from app import schemas
 from app.core import security
 from app.core.config import settings
 from app.db.database import SessionLocal
