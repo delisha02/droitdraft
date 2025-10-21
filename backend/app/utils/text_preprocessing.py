@@ -43,7 +43,7 @@ class TextPreprocessor:
             processed_text = processed_text.replace(citation, placeholder)
 
         # Tokenize the rest of the text
-        tokens = word_tokenize(processed_text.lower())
+        tokens = word_tokenize(processed_text)
 
         # Replace placeholders back with original citations, ensuring case is preserved for citations
         final_tokens = []

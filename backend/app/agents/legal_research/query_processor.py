@@ -67,9 +67,9 @@ class QueryProcessor:
         # Simplify if only one top-level group
         if len(parsed_query["terms"]) == 1 and isinstance(parsed_query["terms"][0], dict):
             return parsed_query["terms"][0]
-        elif not parsed_query["terms"] and query_string:
-            # If no operators found, treat all as AND terms
-            return {"operator": "AND", "terms": [t for t in tokens if t.upper() not in ["AND", "OR", "NOT"]] }
+        # If no operators found, treat all as AND terms
+        if not parsed_query["terms"] and query_string:
+            return {"operator": "AND", "terms": [{"operator": "AND", "terms": [t for t in tokens if t.upper() not in ["AND", "OR", "NOT"]]}] }
         elif not parsed_query["terms"]:
             return {"operator": "AND", "terms": []}
 
