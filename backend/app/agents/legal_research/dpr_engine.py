@@ -63,7 +63,7 @@ class DPREngine:
             ids=ids
         )
 
-    def semantic_search(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+    def search(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
         """
         Performs a semantic search using DPR.
         """

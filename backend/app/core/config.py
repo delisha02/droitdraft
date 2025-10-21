@@ -33,3 +33,17 @@ class Settings(BaseSettings):
         env_file = ".env"
 
 settings = Settings()
+
+HYBRID_SEARCH_CONFIG = {
+    "fusion_algorithm": "reciprocal_rank_fusion",
+    "keyword_alpha": 0.7, # Weight for BM25 in keyword-heavy queries
+    "semantic_alpha": 0.3, # Weight for BM25 in semantic queries
+    "k": 60, # For RRF
+    "boost_factors": {
+        "jurisdiction": "US",
+        "jurisdiction_boost": 1.5,
+        "recency_days": 365,
+        "recency_boost": 1.2
+    }
+}
+

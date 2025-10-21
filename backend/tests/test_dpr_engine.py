@@ -28,7 +28,7 @@ def test_index_and_search(dpr_engine):
     import time
     time.sleep(1)
 
-    search_results = dpr_engine.semantic_search("contract law", top_k=1)
+    search_results = dpr_engine.search("contract law", top_k=1)
 
     assert len(search_results) == 1
     assert search_results[0]["document_id"] == doc_id

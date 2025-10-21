@@ -5,8 +5,12 @@ from docx import Document as DocxDocument
 from PIL import Image, ImageDraw, ImageFont
 from app.agents.document_processor.docx_processor import extract_text_from_docx
 from app.agents.document_processor.pdf_processor import extract_text_from_pdf
-from app.agents.document_processor.text_extractor import extract_text
+from app.agents.document_processor.text_extractor import TextExtractor
 from unittest.mock import MagicMock
+
+@pytest.fixture(scope="module")
+def text_extractor_instance():
+    return TextExtractor()
 
 @pytest.fixture(scope="module")
 def docx_file():
@@ -78,11 +82,11 @@ def test_extract_text_from_image(image_file):
     text = extract_text_from_image(image_file)
     assert "This is a test" in text
 
-def test_extract_text_unified(docx_file, mocker, image_file):
+def test_extract_text_unified(docx_file, mocker, image_file, text_extractor_instance):
     """
     Tests the unified extract_text function.
     """
-    text_docx = extract_text(docx_file)
+    text_docx = text_extractor_instance.extract_text(docx_file)
     assert "This is a test document." in text_docx
 
     # Mock pdfplumber for the PDF test
@@ -94,9 +98,9 @@ def test_extract_text_unified(docx_file, mocker, image_file):
     mock_open = mocker.patch("pdfplumber.open")
     mock_open.return_value.__enter__.return_value = mock_pdf
 
-    text_pdf = extract_text("dummy.pdf")
+    text_pdf = text_extractor_instance.extract_text("dummy.pdf")
     assert "This is a test PDF document." in text_pdf
 
     if is_tesseract_installed():
-        text_image = extract_text(image_file)
+        text_image = text_extractor_instance.extract_text(image_file)
         assert "This is a test" in text_image
