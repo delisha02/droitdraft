@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 from app.agents.legal_research.hybrid_search import HybridSearch
 from app.agents.legal_research.bm25_engine import BM25Engine
 from app.agents.legal_research.dpr_engine import DPREngine
-from app.agents.document_processor.text_extractor import TextExtractor
+from app.agents.legal_research.document_store import DocumentStore
 
 @pytest.fixture
 def mock_bm25_engine():
@@ -25,14 +25,14 @@ def mock_dpr_engine():
     return engine
 
 @pytest.fixture
-def mock_document_retriever():
-    retriever = MagicMock(spec=TextExtractor)
-    retriever.get_document.side_effect = lambda doc_id: {"id": doc_id, "content": f"Content of {doc_id}", "metadata": {"jurisdiction": "US", "date": "2023-01-01"}}
-    return retriever
+def mock_document_store():
+    store = MagicMock(spec=DocumentStore)
+    store.get_document.side_effect = lambda doc_id: {"id": doc_id, "content": f"Content of {doc_id}", "metadata": {"jurisdiction": "US", "date": "2023-01-01"}}
+    return store
 
 @pytest.fixture
-def hybrid_search_engine(mock_bm25_engine, mock_dpr_engine, mock_document_retriever):
-    return HybridSearch(bm25_engine=mock_bm25_engine, dpr_engine=mock_dpr_engine, document_retriever=mock_document_retriever)
+def hybrid_search_engine(mock_bm25_engine, mock_dpr_engine, mock_document_store):
+    return HybridSearch(search_engines=[mock_bm25_engine, mock_dpr_engine], document_store=mock_document_store)
 
 def test_hybrid_search_initialization(hybrid_search_engine):
     assert hybrid_search_engine is not None

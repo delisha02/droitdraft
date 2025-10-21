@@ -1,44 +1,36 @@
+import pickle
 from typing import List, Dict, Any
 from rank_bm25 import BM25Okapi
 from app.utils.text_preprocessing import TextPreprocessor
+from .document_store import DocumentStore
 
 class BM25Engine:
     """
     Implements the BM25 keyword-based search algorithm.
     """
 
-    def __init__(self, k1: float = 1.5, b: float = 0.75):
+    def __init__(self, document_store: DocumentStore, k1: float = 1.5, b: float = 0.75):
         self.k1 = k1
         self.b = b
-        self.bm25 = None
-        self.documents = []
-        self.tokenized_documents = []
+        self.document_store = document_store
         self.text_preprocessor = TextPreprocessor()
+        self.bm25 = None
+        self._build_index()
 
-    def index_documents(self, documents: List[Dict[str, Any]], document_id_key: str = "id", content_key: str = "content"):
+    def _build_index(self):
         """
-        Indexes a list of documents for BM25 search.
-
-        Args:
-            documents: A list of dictionaries, where each dictionary represents a document.
-            document_id_key: The key in the document dictionary that holds the unique ID.
-            content_key: The key in the document dictionary that holds the text content.
+        Builds the BM25 index from the documents in the document store.
         """
-        self.documents = documents
-        self.tokenized_documents = [self.text_preprocessor.preprocess(doc[content_key]) for doc in documents]
-        self.bm25 = BM25Okapi(self.tokenized_documents, k1=self.k1, b=self.b)
+        documents = self.document_store.get_all_documents()
+        if documents:
+            tokenized_documents = [self.text_preprocessor.preprocess(doc["content"]) for doc in documents]
+            self.bm25 = BM25Okapi(tokenized_documents, k1=self.k1, b=self.b)
+        else:
+            self.bm25 = None
 
     def search(self, query: str, top_n: int = 5) -> List[Dict[str, Any]]:
         """
         Performs a BM25 search for the given query.
-
-        Args:
-            query: The search query string.
-            top_n: The number of top results to return.
-
-        Returns:
-            A list of dictionaries, where each dictionary represents a matching document
-            with its original content and a 'score' key.
         """
         if not self.bm25:
             return []
@@ -46,12 +38,26 @@ class BM25Engine:
         tokenized_query = self.text_preprocessor.preprocess(query)
         doc_scores = self.bm25.get_scores(tokenized_query)
 
-        # Pair scores with original documents and sort
+        documents = self.document_store.get_all_documents()
         scored_documents = []
         for i, score in enumerate(doc_scores):
-            if score > 0: # Filter out documents with 0 score
-                scored_documents.append({"document": self.documents[i], "score": score})
+            if score > 0:
+                scored_documents.append({"document": documents[i], "score": score})
         
         scored_documents.sort(key=lambda x: x["score"], reverse=True)
 
         return scored_documents[:top_n]
+
+    def save_index(self, path: str):
+        """
+        Saves the BM25 index to a file.
+        """
+        with open(path, "wb") as f:
+            pickle.dump(self.bm25, f)
+
+    def load_index(self, path: str):
+        """
+        Loads the BM25 index from a file.
+        """
+        with open(path, "rb") as f:
+            self.bm25 = pickle.load(f)

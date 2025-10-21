@@ -13,85 +13,116 @@ class QueryProcessor:
         """
         Parses a query string into a structured format, identifying key terms,
         boolean operators (AND, OR, NOT), and phrase queries.
-
-        Args:
-            query_string: The raw query string from the user.
-
-        Returns:
-            A dictionary representing the parsed query, e.g.,
-            {"operator": "AND", "terms": ["term1", {"operator": "OR", "terms": ["term2", "term3"]}, "\"phrase query\""]}
         """
-        # Normalize query string: replace multiple spaces, trim
-        query_string = re.sub(r'\s+', ' ', query_string).strip()
-
-        # Tokenize by words and quoted phrases
-        # This regex captures either a quoted string (group 1) or a non-whitespace word (group 2)
-        tokens = [m.group(1) or m.group(2) for m in re.finditer(r'"([^"]*)"|(\S+)', query_string)]
-
-        # Simple state machine for parsing
-        parsed_query = {"operator": "AND", "terms": []}
-        current_group = []
-        current_boolean_op = "AND"
-
-        i = 0 # Initialize i
-        while i < len(tokens):
-            token = tokens[i]
-            upper_token = token.upper()
-
-            if upper_token == "AND":
-                if current_group:
-                    parsed_query["terms"].append({"operator": current_boolean_op, "terms": current_group})
-                current_group = []
-                current_boolean_op = "AND"
-            elif upper_token == "OR":
-                if current_group:
-                    parsed_query["terms"].append({"operator": current_boolean_op, "terms": current_group})
-                current_group = []
-                current_boolean_op = "OR"
-            elif upper_token == "NOT":
-                # NOT applies to the next term
-                if i + 1 < len(tokens):
-                    next_term = tokens[i+1]
-                    current_group.append({"operator": "NOT", "term": next_term})
-                    i += 1 # Skip next token as it's consumed by NOT
-                else:
-                    # Handle malformed query: NOT at the end
-                    pass # Or raise an error
-            else:
-                current_group.append(token)
-            i += 1
-
-        if current_group:
-            parsed_query["terms"].append({"operator": current_boolean_op, "terms": current_group})
-
-        # Simplify if only one top-level group
-        if len(parsed_query["terms"]) == 1 and isinstance(parsed_query["terms"][0], dict):
-            return parsed_query["terms"][0]
-        # If no operators found, treat all as AND terms
-        if not parsed_query["terms"] and query_string:
-            return {"operator": "AND", "terms": [{"operator": "AND", "terms": [t for t in tokens if t.upper() not in ["AND", "OR", "NOT"]]}] }
-        elif not parsed_query["terms"]:
+        query_string = query_string.strip()
+        if not query_string:
             return {"operator": "AND", "terms": []}
 
-        return parsed_query
+        # Step 1: Tokenize the query, separating terms, phrases, and operators
+        # This regex captures quoted phrases, NOT, AND, OR, or any sequence of non-whitespace characters
+        # re.IGNORECASE makes operators case-insensitive
+        tokens = [m.group(0) for m in re.finditer(r'"[^"]*"|NOT|AND|OR|\S+', query_string, re.IGNORECASE)]
+
+        # Step 2: Process NOT operators (highest precedence)
+        # NOT applies to the immediately following term/phrase
+        not_processed_tokens = []
+        i = 0
+        while i < len(tokens):
+            token = tokens[i]
+            if token.upper() == "NOT":
+                if i + 1 < len(tokens):
+                    not_processed_tokens.append({"operator": "NOT", "term": tokens[i+1]})
+                    i += 1 # Skip the next token as it's consumed by NOT
+                else:
+                    # Handle dangling NOT: treat as a regular term if nothing follows
+                    not_processed_tokens.append(token)
+            else:
+                not_processed_tokens.append(token)
+            i += 1
+        tokens = not_processed_tokens
+
+        # Step 3: Process AND operators (higher precedence than OR)
+        # This step groups terms connected by AND.
+        and_processed_tokens = []
+        i = 0
+        while i < len(tokens):
+            term = tokens[i]
+            if i + 1 < len(tokens) and isinstance(tokens[i+1], str) and tokens[i+1].upper() == "AND":
+                # Found an AND, group the current term with the next one
+                if isinstance(term, dict) and term.get("operator") == "AND":
+                    # If the current term is already an AND group, extend it
+                    and_processed_tokens.append(term)
+                else:
+                    and_processed_tokens.append(term)
+                i += 2 # Skip the AND and the next term, which will be handled in the next iteration
+            else:
+                and_processed_tokens.append(term)
+                i += 1
+        tokens = and_processed_tokens
+
+        # Step 4: Process OR operators (lower precedence)
+        # This step groups the results of AND operations connected by OR.
+        or_processed_tokens = []
+        current_or_group = []
+        i = 0
+        while i < len(tokens):
+            token = tokens[i]
+            if isinstance(token, str) and token.upper() == "OR":
+                # If we encounter an OR, and we have a current group, add it to or_processed_tokens
+                if current_or_group:
+                    or_processed_tokens.append(self._simplify_group(current_or_group, "AND")) # Implicit AND for terms within the OR group
+                current_or_group = [] # Reset for the next OR group
+            else:
+                current_or_group.append(token)
+            i += 1
+        if current_or_group:
+            or_processed_tokens.append(self._simplify_group(current_or_group, "AND"))
+
+        if len(or_processed_tokens) == 1:
+            tokens = or_processed_tokens[0]
+        elif len(or_processed_tokens) > 1:
+            tokens = {"operator": "OR", "terms": or_processed_tokens}
+        else:
+            tokens = {"operator": "AND", "terms": []} # Default for empty query
+
+        # Step 5: Final simplification
+        if isinstance(tokens, dict) and tokens.get("operator") == "AND" and len(tokens.get("terms", [])) == 1:
+            return tokens["terms"][0]
+        return tokens
+
+    def _simplify_group(self, group: List[Any], default_operator: str) -> Dict[str, Any]:
+        """
+        Simplifies a list of terms/groups into a single dictionary with a default operator.
+        If the group contains only one item, it returns that item directly.
+        """
+        if len(group) == 1:
+            return group[0]
+        else:
+            return {"operator": default_operator, "terms": group}
 
     def extract_keywords(self, parsed_query: Dict[str, Any]) -> List[str]:
         """
         Extracts all keywords from a parsed query, including terms within phrase queries.
         """
         keywords = []
-        for term_item in parsed_query.get("terms", []):
-            if isinstance(term_item, dict):
-                if "operator" in term_item and "terms" in term_item:
-                    # Handle nested boolean operations
-                    keywords.extend(self.extract_keywords(term_item))
-                elif "operator" in term_item and term_item["operator"] == "NOT" and "term" in term_item:
-                    # Handle NOT operator's term
-                    keywords.append(term_item["term"])
+        if isinstance(parsed_query, str):
+            # Remove quotes from phrase queries for keyword extraction
+            if parsed_query.startswith('"') and parsed_query.endswith('"'):
+                keywords.append(parsed_query[1:-1])
             else:
-                # Remove quotes from phrase queries for keyword extraction
-                if isinstance(term_item, str) and term_item.startswith('"') and term_item.endswith('"'):
-                    keywords.append(term_item[1:-1])
-                else:
-                    keywords.append(term_item)
+                keywords.append(parsed_query)
+        elif isinstance(parsed_query, dict):
+            operator = parsed_query.get("operator")
+            terms = parsed_query.get("terms", [])
+
+            if operator == "NOT":
+                term = parsed_query.get("term")
+                if term: # Ensure term is not None
+                    if isinstance(term, str) and term.startswith('"') and term.endswith('"'):
+                        keywords.append(term[1:-1])
+                    else:
+                        keywords.append(term)
+            else:
+                for term_item in terms:
+                    keywords.extend(self.extract_keywords(term_item)) # Recursive call
         return keywords
