@@ -78,6 +78,16 @@ def test_text_preprocessor_preprocess(text_preprocessor):
 
 # --- BM25Indexer Tests ---
 
+def test_bm25_indexer_search(bm25_indexer):
+    results = bm25_indexer.search("contract law", top_n=2)
+    assert len(results) == 2
+    assert results[0]["document"]["id"] == "doc1" # Assuming doc1 is most relevant
+    assert results[0]["score"] > results[1]["score"]
+
+def test_bm25_indexer_no_results(bm25_indexer):
+    results = bm25_indexer.search("nonexistent term")
+    assert len(results) == 0
+
 # --- QueryProcessor Tests ---
 
 def test_query_processor_parse_simple_query(query_processor):
