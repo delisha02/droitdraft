@@ -45,9 +45,17 @@ class Template(Base):
     __tablename__ = "templates"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
+    name = Column(String, index=True, nullable=False)
     description = Column(Text)
-    content = Column(Text)
+    content = Column(Text, nullable=False)
+    document_type = Column(String, nullable=False)  # e.g., 'notice', 'complaint', 'will'
+    jurisdiction = Column(String, nullable=False)  # e.g., 'India', 'Maharashtra'
+    version = Column(String, default="1.0", nullable=False)
+    author = Column(String)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
+    usage_count = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True)
 
     def __repr__(self):
         return f"<Template(id={self.id}, name='{self.name}')>"
