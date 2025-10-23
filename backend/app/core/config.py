@@ -17,6 +17,9 @@ class Settings(BaseSettings):
 
     GROQ_API_KEY: str
     GEMINI_API_KEY: str
+    INDIAN_KANOON_API_KEY: str
+    REDIS_HOST: str
+    REDIS_PORT: int
 
     UPLOAD_DIR: str
     PROCESSED_DIR: str

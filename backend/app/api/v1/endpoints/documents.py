@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app import crud, schemas, models
 from app.api import deps
 from app.agents.document_generator.assembly_engine import assembly_engine
+from app.integrations.indiankanoon.data_processor import IndianKanoonDataProcessor
 
 router = APIRouter()
 
@@ -35,3 +36,23 @@ async def generate_document(
     doc_create = schemas.DocumentCreate(title=doc_in.title, content=generated_content, owner_id=current_user.id)
     document = crud.document.create(db, obj_in=doc_create)
     return document
+
+
+@router.post("/indiankanoon/process/{doc_id}", response_model=dict)
+async def process_indian_kanoon_document(
+    *, 
+    db: Session = Depends(deps.get_db),
+    doc_id: str,
+    current_user: models.User = Depends(deps.get_current_active_user)
+):
+    """
+    Fetch, process, and store a document from Indian Kanoon.
+    """
+    processor = IndianKanoonDataProcessor(db)
+    try:
+        await processor.process_document(doc_id)
+        return {"message": f"Document {doc_id} processed successfully."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        await processor.close()
