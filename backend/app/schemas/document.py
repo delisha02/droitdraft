@@ -31,3 +31,9 @@ class DocumentInDBBase(DocumentBase):
 
 class Document(DocumentInDBBase):
     pass
+
+
+class DocumentGenerate(BaseModel):
+    title: str
+    template_id: int
+    case_facts: dict
