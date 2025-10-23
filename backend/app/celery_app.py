@@ -6,7 +6,7 @@ celery_app = Celery(
     "tasks",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
-    include=["app.integrations.livelaw.scheduler"]
+    include=["app.integrations.livelaw.scheduler", "app.services.tasks"]
 )
 
 celery_app.conf.update(
