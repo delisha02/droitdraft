@@ -16,3 +16,11 @@ def ingest_livelaw_task():
     db = next(deps.get_db())
     ingestion_service = CorpusIngestionService(db)
     ingestion_service.ingest_from_livelaw()
+
+
+@celery_app.task
+def embed_and_index_task(doc_id: int, content: str, metadata: dict):
+    """Celery task to embed and index a document."""
+    from app.services.document_indexer import DocumentIndexer
+    indexer = DocumentIndexer()
+    indexer.index_document(str(doc_id), content, metadata)

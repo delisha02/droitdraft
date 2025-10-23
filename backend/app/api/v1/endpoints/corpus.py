@@ -1,6 +1,8 @@
 
-from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
+
+from app import crud
 
 from app.api import deps
 from app.services.corpus_ingestion import CorpusIngestionService
@@ -40,3 +42,17 @@ async def ingest_upload(
 async def get_ingestion_stats():
     """Get ingestion statistics."""
     return ingestion_monitor.get_stats()
+
+
+@router.post("/index/{doc_id}", status_code=202)
+async def index_document(
+    doc_id: int,
+    db: Session = Depends(deps.get_db)
+):
+    """Trigger the embedding and indexing of a document."""
+    document = crud.document.get(db, id=doc_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    tasks.embed_and_index_task.delay(document.id, document.content, {"title": document.title})
+    return {"message": f"Indexing of document {doc_id} triggered."}
