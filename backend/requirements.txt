@@ -113,6 +113,8 @@ redis==5.0.7
 aioredis==2.0.1
 pybreaker==1.1.0
 beautifulsoup4==4.12.3
+celery==5.4.0
+flower==2.0.1
 requests-oauthlib==2.0.0
 rich==14.2.0
 rich-toolkit==0.15.1

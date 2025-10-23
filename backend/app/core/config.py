@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     INDIAN_KANOON_API_KEY: str
     REDIS_HOST: str
     REDIS_PORT: int
+    CELERY_BROKER_URL: str
+    CELERY_RESULT_BACKEND: str
 
     UPLOAD_DIR: str
     PROCESSED_DIR: str
