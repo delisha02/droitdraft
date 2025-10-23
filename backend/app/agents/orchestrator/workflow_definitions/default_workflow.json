@@ -1,0 +1,30 @@
+{
+    "name": "Default Document Generation Workflow",
+    "version": "1.0",
+    "nodes": [
+        {
+            "name": "get_template",
+            "type": "node",
+            "entry": true
+        },
+        {
+            "name": "document_generator",
+            "type": "node"
+        },
+        {
+            "name": "legal_research",
+            "type": "node"
+        }
+    ],
+    "edges": [
+        {
+            "from_node": "get_template",
+            "to_node": "document_generator"
+        },
+        {
+            "from_node": "document_generator",
+            "to_node": "legal_research",
+            "condition": "research_query"
+        }
+    ]
+}
