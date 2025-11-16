@@ -15,15 +15,17 @@ class BM25Engine:
         self.document_store = document_store
         self.text_preprocessor = TextPreprocessor()
         self.bm25 = None
-        self._build_index()
+        # self._build_index() # Removed this line
 
     def _build_index(self):
         """
         Builds the BM25 index from the documents in the document store.
         """
         documents = self.document_store.get_all_documents()
+        print(f"BM25Engine - _build_index: Documents from store: {documents}") # Added print
         if documents:
             tokenized_documents = [self.text_preprocessor.preprocess(doc["content"]) for doc in documents]
+            print(f"BM25Engine - _build_index: Tokenized documents: {tokenized_documents}") # Added print
             self.bm25 = BM25Okapi(tokenized_documents, k1=self.k1, b=self.b)
         else:
             self.bm25 = None
@@ -36,7 +38,9 @@ class BM25Engine:
             return []
 
         tokenized_query = self.text_preprocessor.preprocess(query)
+        print(f"BM25Engine - search: Tokenized query: {tokenized_query}") # Added print
         doc_scores = self.bm25.get_scores(tokenized_query)
+        print(f"BM25Engine - search: Document scores: {doc_scores}") # Added print
 
         documents = self.document_store.get_all_documents()
         scored_documents = []

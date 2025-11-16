@@ -32,7 +32,7 @@ def document_store(sample_documents):
 def bm25_indexer(document_store):
     # Temporarily remove index persistence for debugging
     indexer = BM25Indexer(document_store, index_path="temp_index.pkl") # index_path is now a dummy
-    indexer.bm25_engine._build_index() # Directly build the index in memory
+    indexer.rebuild_index() # Explicitly rebuild index after document_store is ready
     return indexer
 
 @pytest.fixture

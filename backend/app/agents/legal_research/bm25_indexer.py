@@ -13,6 +13,9 @@ class BM25Indexer:
         self.index_path = index_path
         self.bm25_engine = BM25Engine(document_store, k1=k1, b=b)
         self._load_index()
+        # Ensure index is built if not loaded from file
+        if self.bm25_engine.bm25 is None:
+            self.bm25_engine._build_index()
 
     def _load_index(self):
         """

@@ -2,7 +2,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app import crud, schemas, models
+from app import crud
+from app.models.models import User # Import User explicitly
+from app.schemas import document as schemas_document
+from app.schemas.document import DocumentGenerate
 from app.api import deps
 from app.agents.document_generator.assembly_engine import assembly_engine
 from app.integrations.indiankanoon.data_processor import IndianKanoonDataProcessor
@@ -10,12 +13,12 @@ from app.integrations.indiankanoon.data_processor import IndianKanoonDataProcess
 router = APIRouter()
 
 
-@router.post("/generate", response_model=schemas.Document)
+@router.post("/generate", response_model=schemas_document.Document)
 async def generate_document(
-    *, 
+    *,
     db: Session = Depends(deps.get_db),
-    doc_in: schemas.DocumentGenerate,
-    current_user: models.User = Depends(deps.get_current_active_user)
+    doc_in: DocumentGenerate,
+    current_user: User = Depends(deps.get_current_active_user)
 ):
     """
     Generate a new document.
@@ -33,17 +36,17 @@ async def generate_document(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    doc_create = schemas.DocumentCreate(title=doc_in.title, content=generated_content, owner_id=current_user.id)
+    doc_create = schemas_document.DocumentCreate(title=doc_in.title, content=generated_content, owner_id=current_user.id)
     document = crud.document.create(db, obj_in=doc_create)
     return document
 
 
 @router.post("/indiankanoon/process/{doc_id}", response_model=dict)
 async def process_indian_kanoon_document(
-    *, 
+    *,
     db: Session = Depends(deps.get_db),
     doc_id: str,
-    current_user: models.User = Depends(deps.get_current_active_user)
+    current_user: User = Depends(deps.get_current_active_user)
 ):
     """
     Fetch, process, and store a document from Indian Kanoon.

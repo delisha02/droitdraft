@@ -84,5 +84,5 @@ class TextPreprocessor:
         tokens = self.tokenize(text)
         tokens = self._remove_punctuation(tokens)
         tokens = self.remove_stop_words(tokens)
-        tokens = self.stem_and_lemmatize(tokens)
+        # tokens = self.stem_and_lemmatize(tokens) # Temporarily disable stemming and lemmatization
         return tokens
