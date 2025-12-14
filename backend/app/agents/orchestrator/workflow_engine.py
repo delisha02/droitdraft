@@ -6,6 +6,7 @@ from app.agents.orchestrator.agent_nodes import (
     get_template_node,
     document_generator_node,
     legal_research_node,
+    document_processor_node, # Added document_processor_node import
 )
 from app.schemas.workflow import WorkflowDefinition
 from app.agents.orchestrator.execution_monitor import execution_monitor
@@ -23,6 +24,8 @@ class WorkflowEngine:
             return document_generator_node
         elif name == "legal_research":
             return legal_research_node
+        elif name == "document_processor": # Added document_processor_node mapping
+            return document_processor_node
         else:
             raise ValueError(f"Node {name} not found")
 
@@ -48,11 +51,11 @@ class WorkflowEngine:
         
         return workflow.compile()
 
-    def run(self, input_data: dict) -> dict:
+    async def arun(self, input_data: dict) -> dict:
         execution_id = execution_monitor.start_execution(self.workflow_definition.name)
         
         try:
-            result = self.graph.invoke(input_data)
+            result = await self.graph.ainvoke(input_data)
             execution_monitor.end_execution(execution_id, "completed")
             return result
         except Exception as e:

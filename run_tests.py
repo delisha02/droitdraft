@@ -3,6 +3,7 @@ import subprocess
 from dotenv import load_dotenv
 from pathlib import Path
 import nltk
+import sys
 
 # Download NLTK data if not already present
 try:

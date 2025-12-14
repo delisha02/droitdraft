@@ -1,4 +1,7 @@
 from pydantic_settings import BaseSettings
+from typing import Optional
+from pydantic import field_validator
+import os
 
 class Settings(BaseSettings):
     DB_HOST: str
@@ -12,10 +15,15 @@ class Settings(BaseSettings):
     MINIO_SECRET_KEY: str
     MINIO_BUCKET: str
 
+    @field_validator("MINIO_ENDPOINT", "MINIO_ACCESS_KEY", "MINIO_SECRET_KEY")
+    @classmethod
+    def strip_minio_whitespace(cls, v: str) -> str:
+        return v.strip()
+
     CHROMA_HOST: str
     CHROMA_PORT: int
 
-    GROQ_API_KEY: str
+    GROQ_API_KEY: Optional[str] = None
     GEMINI_API_KEY: str
     INDIAN_KANOON_API_KEY: str
     REDIS_HOST: str

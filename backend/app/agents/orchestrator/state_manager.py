@@ -5,8 +5,9 @@ class DroitAgentState(TypedDict):
     """Represents the state of the DroitDraft agent workflow."""
     
     # Input data
+    query: str
     case_facts: dict
-    template_id: int
+    template_id: Optional[int]
     
     # Processed data
     template_content: str

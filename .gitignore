@@ -4,9 +4,13 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
+.pytest_cache/
+.ruff_cache/
 env/
 venv/
 dd/
+.venv/
+
 prompts/
 # IDEs
 .vscode/

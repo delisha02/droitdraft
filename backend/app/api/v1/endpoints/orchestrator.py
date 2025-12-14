@@ -19,7 +19,7 @@ async def run_orchestrator(workflow_name: str, payload: dict = Body(...)):
         
         workflow_def = WorkflowDefinition(**workflow_def_dict)
         engine = WorkflowEngine(workflow_def)
-        result = engine.run(payload)
+        result = await engine.arun(payload)
         return result
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Workflow not found")

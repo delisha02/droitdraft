@@ -1,0 +1,41 @@
+{
+    "name": "Generate Legal Notice Workflow",
+    "version": "1.0",
+    "nodes": [
+        {
+            "name": "document_processor",
+            "type": "node",
+            "entry": true
+        },
+        {
+            "name": "get_template",
+            "type": "node"
+        },
+        {
+            "name": "legal_research",
+            "type": "node"
+        },
+        {
+            "name": "document_generator",
+            "type": "node"
+        }
+    ],
+    "edges": [
+        {
+            "from_node": "document_processor",
+            "to_node": "get_template"
+        },
+        {
+            "from_node": "document_processor",
+            "to_node": "legal_research"
+        },
+        {
+            "from_node": "get_template",
+            "to_node": "document_generator"
+        },
+        {
+            "from_node": "legal_research",
+            "to_node": "document_generator"
+        }
+    ]
+}
