@@ -51,7 +51,7 @@ export default function DashboardPage() {
         return;
       }
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/templates`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/templates/`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

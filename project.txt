@@ -1,0 +1,109 @@
+High-Level Roadmap: Frontend to Backend Integration
+
+Step 1: Run Both Servers and Configure Communication
+
+First, you need to have both your frontend and backend development servers running at the same
+
+time and ensure they can communicate.
+
+- Run Backend: In one terminal, start your FastAPI backend server on port 8001:
+
+1     # In D:\droitdraft\backend
+2     uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+
+- Run Frontend: In a second terminal, start your Next.js frontend server (which typically runs
+on port 3000):
+
+1     # In D:\droitdraft\frontend
+2     npm run dev
+
+- Configure CORS: Browsers block web pages from making API requests to a different domain/port
+("origin") unless the server explicitly allows it. Your backend needs to allow requests from
+your frontend.
+    - Open your backend/.env file.
+    - Find the CORS_ORIGINS variable.
+    - Make sure it includes your frontend's address (e.g.,
+    CORS_ORIGINS="[http://localhost:3000](http://localhost:3000/)").
+
+Step 2: Implement Real User Authentication
+
+Currently, your frontend uses fake authentication. You need to replace this with real calls to
+
+your backend's authentication API.
+
+- What to do:
+    1. On the frontend's sign-in page (frontend/app/auth/signin/...), modify the form submission
+    logic. Instead of simulating a login, use fetch to make a POST request to your backend's
+    /api/v1/auth/login/access-token endpoint.
+    2. Send the user's email and password in the request body.
+    3. If the login is successful, the backend will return a JSON Web Token (JWT).
+    4. Store this token securely on the frontend (for a prototype, localStorage is acceptable).
+    5. For every subsequent API request to a protected backend route, include this token in the
+    Authorization header (e.g., Authorization: Bearer <your_token>).
+- Why: This replaces the insecure placeholder login with a real, token-based authentication
+system that is standard for modern web applications.
+
+Step 3: Implement the Core Document Generation Workflow
+
+This is the main goal. You'll connect the "AI Assistant" in your editor to the backend
+orchestrator.
+
+- What to do:
+    1. In your frontend's editor page (frontend/app/editor/page.tsx), find the handleAiGenerate
+    function that is called when the "Generate Content" button is clicked.
+    2. Inside this function, get the user's query from the aiPrompt state.
+    3. Make a POST request to your backend's orchestrator endpoint:
+    /api/v1/orchestrator/run/generate_notice.
+    4. Send the user's query in the request body, like this: json: {"query": aiPrompt}.
+    5. The backend will execute the entire langgraph workflow (extracting facts, getting the
+    template, running the LLM, etc.) and return a final JSON response containing the
+    generated document.
+    6. Back on the frontend, take the generated_document content from the API response and
+    update the editor's state to display it to the user.
+- Why: This connects the frontend UI directly to the powerful AI engine you've built on the
+backend, enabling the core feature of the application.
+Step 4: Replace All Other Simulated Actions
+
+Finally, you need to replace all the other placeholder functions on the frontend.
+
+- What to do:
+    1. Go through the frontend/lib/actions.tsx file.
+    2. For each function (e.g., saveDocument, shareDocument), replace the simulated logic (new
+    Promise(...)) with a real fetch call to the corresponding backend API endpoint (e.g.,
+    /api/v1/documents, etc.).
+    3. Remember to include the authentication token in the headers for these calls.
+- Why: This makes all other features of your application, like saving and sharing, fully
+functional.
+
+By following these steps, you will transform your project from two separate parts into a single,
+cohesive, and functional web application.
+
+- End-to-End Workflow:
+* Users can register and log in securely via the backend API.
+* They can input a query into the frontend editor.
+* The frontend will send this query to the backend's orchestrator.
+* The backend will execute the AI workflow (fact extraction, template retrieval, LLM generation, etc.).
+* The generated document will be sent back to the frontend and displayed in the editor.
+    - Basic Document Management: You'll be able to save, load, and manage documents, assuming the relevant backend
+    APIs are called correctly by the frontend.
+    - UI Interaction: The UI elements (buttons, forms) will trigger real backend actions.
+    
+    What might still need further work/refinement (beyond core functionality):
+    
+    - LLM Quality & Fine-tuning: The accuracy and quality of the generated legal documents are entirely dependent on
+    the configured LLMs and your prompt engineering, which is an ongoing process.
+    - Rich Text Editor Advanced Features: While the editor has many buttons, the implementation of complex features
+    like "insert table" or robust document formatting might still be rudimentary or simulated, potentially
+    requiring a more advanced editor library (e.g., Tiptap, Lexical).
+    - Error Handling & User Experience: While errors will propagate, the user-facing error messages and overall UX
+    for feedback (loading states, success notifications) might need refinement.
+    - Disabled Features: The Celery/Redis-dependent features (like LiveLaw ingestion or background document indexing)
+    are currently commented out in the backend and will not be functional until you re-enable them and set up
+    Redis.
+    - Specific External Integrations: Integrations like Indian Kanoon, which we mocked for testing, will need actual
+    API keys and proper integration if you want to use them in a live environment.
+    
+    So, while the core purpose of generating documents will be functional, a "production-ready" or "fully polished"
+    application would still require additional work on UI/UX, advanced features, and potentially deeper integration
+    with external services.
+
