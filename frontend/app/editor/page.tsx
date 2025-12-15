@@ -84,7 +84,6 @@ export default function EditorPage() {
   const [currentFontSize, setCurrentFontSize] = useState("12")
   const [currentLineHeight, setCurrentLineHeight] = useState("1.5")
   const [aiPrompt, setAiPrompt] = useState("")
-  const [isAiGenerating, setIsAiGenerating] = useState(false)
   const editorRef = useRef<HTMLDivElement>(null)
 
   const {
@@ -93,6 +92,8 @@ export default function EditorPage() {
     lastSaved,
     handleSave,
     updateDocument,
+    handleGenerateAI: handleAiGenerateFromHook,
+    isGenerating,
   } = useDocument({
     title: `Untitled ${documentTemplates[docType as keyof typeof documentTemplates] || "Document"}`,
     content: "",
@@ -335,38 +336,24 @@ export default function EditorPage() {
   }
 
   const handleAiGenerate = async () => {
-    if (!aiPrompt.trim()) return
+    if (!aiPrompt.trim()) return;
 
-    setIsAiGenerating(true)
-    try {
-      // Simulate AI generation - replace with actual AI integration later
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+    const generatedContent = await handleAiGenerateFromHook(aiPrompt);
 
-      const aiContent = `<div style="border: 1px solid #e0e0e0; padding: 15px; margin: 10px 0; background: #f9f9f9;"><p><strong>[AI Generated Content]</strong></p><p>This is where AI-generated content for "${aiPrompt}" would appear. The AI integration will be added here later.</p></div>`
-
-      if (editorRef.current) {
-        const selection = window.getSelection()
-        if (selection && selection.rangeCount > 0) {
-          const range = selection.getRangeAt(0)
-          const div = window.document.createElement("div")
-          div.innerHTML = aiContent
-          range.insertNode(div)
-          updateContentFromEditor()
-        } else {
-          // If no selection, append to end
-          const div = window.document.createElement("div")
-          div.innerHTML = aiContent
-          editorRef.current.appendChild(div)
-          updateContentFromEditor()
-        }
+    if (generatedContent && editorRef.current) {
+      // Append the generated content to the editor
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const div = window.document.createElement("div");
+        div.innerHTML = generatedContent;
+        range.deleteContents();
+        range.insertNode(div);
+      } else {
+        editorRef.current.innerHTML += generatedContent;
       }
-
-      setAiPrompt("")
-    } catch (error) {
-      console.error("AI generation error:", error)
-      alert("AI generation failed. Please try again.")
-    } finally {
-      setIsAiGenerating(false)
+      updateContentFromEditor();
+      setAiPrompt("");
     }
   }
 
@@ -597,7 +584,7 @@ export default function EditorPage() {
             </Button>
             <Button variant="ghost" size="sm" onClick={() => formatText("outdent")}>
               <Outdent className="w-4 h-4" />
-            </Button>
+            </BinnerText>
             <Button variant="ghost" size="sm" onClick={() => formatText("indent")}>
               <Indent className="w-4 h-4" />
             </Button>
@@ -642,9 +629,9 @@ export default function EditorPage() {
               <Button
                 onClick={handleAiGenerate}
                 className="w-full bg-blue-600 hover:bg-blue-700"
-                disabled={isAiGenerating || !aiPrompt.trim()}
+                disabled={isGenerating || !aiPrompt.trim()}
               >
-                {isAiGenerating ? (
+                {isGenerating ? (
                   <>
                     <Bot className="w-4 h-4 mr-2 animate-spin" />
                     Generating...

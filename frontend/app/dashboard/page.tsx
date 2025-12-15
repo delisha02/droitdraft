@@ -25,152 +25,16 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { AuthModal } from "@/components/auth-modal"
+import { DocumentList } from "@/components/document-list";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
-const documentTypes = [
-  {
-    id: "notices",
-    title: "Legal Notices",
-    description:
-      "Generate various legal notices including defamation notices, breach of contract notifications, eviction notices, and cease and desist letters.",
-    icon: FileText,
-    color: "bg-red-500",
-    features: ["Defamation Notice", "Breach of Contract", "Eviction Notice", "Cease and Desist"],
-  },
-  {
-    id: "will",
-    title: "Wills & Testaments",
-    description:
-      "Create comprehensive last will and testament documents with proper legal language and witness requirements.",
-    icon: Shield,
-    color: "bg-green-500",
-    features: ["Last Will & Testament", "Living Will", "Codicil"],
-  },
-  {
-    id: "plaintiff",
-    title: "Plaintiff Documents",
-    description:
-      "Draft plaintiff-specific legal documents including complaints, motions, and litigation support materials.",
-    icon: Scale,
-    color: "bg-blue-500",
-    features: ["Complaint Filing", "Motion Documents", "Discovery Requests"],
-  },
-  {
-    id: "preceding-drafts",
-    title: "Preceding Drafts",
-    description:
-      "Generate preliminary legal document drafts and templates for review and refinement before final submission.",
-    icon: Home,
-    color: "bg-purple-500",
-    features: ["Draft Templates", "Review Documents", "Preliminary Filings"],
-  },
-  {
-    id: "contracts",
-    title: "Contract Agreements",
-    description:
-      "Create various types of contract agreements including service contracts, employment agreements, and partnership documents.",
-    icon: Briefcase,
-    color: "bg-indigo-500",
-    features: ["Service Contracts", "Employment Agreements", "Partnership Contracts"],
-  },
-  {
-    id: "probate",
-    title: "Probate Documents",
-    description: "Generate probate-related documents for estate administration and succession proceedings.",
-    icon: FileText,
-    color: "bg-amber-500",
-    features: ["Probate Petition", "Estate Inventory", "Succession Certificate"],
-  },
-  {
-    id: "letters-of-administration",
-    title: "Letters of Administration",
-    description:
-      "Create letters of administration documents granting authority to manage an estate when there is no valid will.",
-    icon: Mail,
-    color: "bg-cyan-500",
-    features: ["Administration Letter", "Authority Grant", "Estate Management"],
-  },
-  {
-    id: "caveat",
-    title: "Caveat",
-    description:
-      "Prepare caveat documents to prevent probate or property transfer until a specific matter is resolved.",
-    icon: AlertCircle,
-    color: "bg-orange-500",
-    features: ["Caveat Filing", "Notice of Opposition", "Caveat Withdrawal"],
-  },
-  {
-    id: "sale-deed",
-    title: "Sale Deed",
-    description:
-      "Generate comprehensive sale deed documents for property transfers with all necessary legal provisions.",
-    icon: FileCheck,
-    color: "bg-emerald-500",
-    features: ["Property Transfer", "Consideration Details", "Warranty Clauses"],
-  },
-  {
-    id: "deed-of-exchange",
-    title: "Deed of Exchange",
-    description: "Create deed of exchange documents for swapping properties between two or more parties.",
-    icon: Repeat,
-    color: "bg-rose-500",
-    features: ["Property Exchange", "Mutual Consideration", "Exchange Terms"],
-  },
-  {
-    id: "release-deed",
-    title: "Release Deed",
-    description: "Prepare release deed documents to release claims, rights, or liabilities related to property.",
-    icon: CheckCircle,
-    color: "bg-lime-500",
-    features: ["Claim Release", "Right Waiver", "Liability Release"],
-  },
-  {
-    id: "deed-of-transfer",
-    title: "Deed of Transfer",
-    description: "Generate deed of transfer documents for transferring property ownership and related rights.",
-    icon: ArrowRight,
-    color: "bg-pink-500",
-    features: ["Ownership Transfer", "Right Assignment", "Property Details"],
-  },
-  {
-    id: "development-agreement",
-    title: "Development Agreement",
-    description:
-      "Create development agreement documents for real estate development projects with all terms and conditions.",
-    icon: Building2,
-    color: "bg-sky-500",
-    features: ["Project Terms", "Obligations", "Payment Schedule"],
-  },
-  {
-    id: "conveyance",
-    title: "Conveyance",
-    description: "Prepare conveyance documents for the legal transfer of property ownership from one party to another.",
-    icon: FileDocument,
-    color: "bg-violet-500",
-    features: ["Property Conveyance", "Legal Transfer", "Ownership Rights"],
-  },
-  {
-    id: "gift-deed",
-    title: "Gift Deed",
-    description: "Generate gift deed documents for voluntary transfer of property without any consideration.",
-    icon: Gift,
-    color: "bg-fuchsia-500",
-    features: ["Voluntary Transfer", "No Consideration", "Gift Acceptance"],
-  },
-  {
-    id: "permanent-alternate-accommodation",
-    title: "Permanent Alternate Accommodation",
-    description:
-      "Create documents for permanent alternate accommodation arrangements in property transfer or development scenarios.",
-    icon: Home,
-    color: "bg-teal-500",
-    features: ["Accommodation Terms", "Occupancy Rights", "Duration Clause"],
-  },
-]
+const icons = [FileText, Shield, Scale, Home, Briefcase, Mail, AlertCircle, FileCheck, Repeat, CheckCircle, ArrowRight, Building2, FileDocument, Gift];
+const colors = ["bg-red-500", "bg-green-500", "bg-blue-500", "bg-purple-500", "bg-indigo-500", "bg-amber-500", "bg-cyan-500", "bg-orange-500", "bg-emerald-500", "bg-rose-500", "bg-lime-500", "bg-pink-500", "bg-sky-500", "bg-violet-500", "bg-fuchsia-500", "bg-teal-500"];
 
 export default function DashboardPage() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [isDemoOpen, setIsDemoOpen] = useState(false)
+  const [documentTypes, setDocumentTypes] = useState<any[]>([])
   const router = useRouter()
 
   useEffect(() => {
@@ -179,6 +43,36 @@ export default function DashboardPage() {
       router.push("/auth/signin");
     }
   }, [router]);
+
+  useEffect(() => {
+    const fetchDocumentTypes = async () => {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        return;
+      }
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/templates`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setDocumentTypes(data.map((template: any, index: number) => ({
+            id: template.id,
+            title: template.name,
+            description: template.description,
+            icon: icons[index % icons.length],
+            color: colors[index % colors.length],
+            features: [template.document_type, template.jurisdiction],
+          })));
+        }
+      } catch (error) {
+        console.error("Failed to fetch document types", error);
+      }
+    };
+    fetchDocumentTypes();
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("isAuthenticated");
@@ -189,7 +83,7 @@ export default function DashboardPage() {
 
   const handleStartCreating = () => {
     // Scroll to document types section
-    document.getElementById("document-types")?.scrollIntoView({
+    document.getElementById("document-list")?.scrollIntoView({
       behavior: "smooth",
     })
   }
@@ -246,6 +140,8 @@ export default function DashboardPage() {
           </div>
         </div>
       </section>
+
+      <DocumentList />
 
       {/* Document Types Section */}
       <section id="document-types" className="py-16 px-4">

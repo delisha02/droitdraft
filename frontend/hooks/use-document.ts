@@ -1,14 +1,13 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
-import { saveDocument, generateAIContent } from "@/lib/actions"
+import { useState, useCallback, useEffect } from "react";
 
 export interface Document {
-  id?: string
-  title: string
-  content: string
-  type: string
-  lastSaved?: string
+  id?: string;
+  title: string;
+  content: string;
+  type: string;
+  lastSaved?: string;
 }
 
 export function useDocument(initialDocument?: Document) {
@@ -17,55 +16,109 @@ export function useDocument(initialDocument?: Document) {
       title: "Untitled Document",
       content: "",
       type: "contract",
-    },
-  )
-  const [isSaving, setIsSaving] = useState(false)
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [lastSaved, setLastSaved] = useState<string>()
+    }
+  );
+  const [isSaving, setIsSaving] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [lastSaved, setLastSaved] = useState<string>();
 
   // Auto-save functionality
   useEffect(() => {
     const autoSave = setTimeout(() => {
       if (document.content.trim()) {
-        handleSave()
+        handleSave();
       }
-    }, 30000) // Auto-save every 30 seconds
+    }, 30000); // Auto-save every 30 seconds
 
-    return () => clearTimeout(autoSave)
-  }, [document.content])
+    return () => clearTimeout(autoSave);
+  }, [document.content]);
 
   const handleSave = useCallback(async () => {
-    setIsSaving(true)
+    setIsSaving(true);
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      // Handle case where user is not authenticated
+      console.error("Authentication token not found.");
+      setIsSaving(false);
+      return;
+    }
+
     try {
-      const result = await saveDocument(document)
-      if (result.success) {
-        setDocument((prev) => ({ ...prev, id: result.documentId }))
-        setLastSaved(result.timestamp)
+      const url = document.id
+        ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/documents/${document.id}`
+        : `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/documents/`;
+      const method = document.id ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: document.title,
+          content: document.content,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setDocument((prev) => ({ ...prev, id: result.id }));
+        setLastSaved(new Date().toISOString());
+      } else {
+        console.error("Save failed:", await response.text());
       }
     } catch (error) {
-      console.error("Save failed:", error)
+      console.error("Save failed:", error);
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }, [document])
+  }, [document]);
 
   const handleGenerateAI = useCallback(
     async (prompt: string) => {
-      setIsGenerating(true)
+      setIsGenerating(true);
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        console.error("Authentication token not found.");
+        setIsGenerating(false);
+        return null;
+      }
+
       try {
-        const result = await generateAIContent(prompt, document.type)
-        if (result.success) {
-          return result.content
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/documents/generation/generate`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              template_id: parseInt(document.type, 10),
+              case_facts: { prompt },
+              title: document.title,
+            }),
+          }
+        );
+
+        if (response.ok) {
+          const result = await response.json();
+          setDocument(result);
+          return result.content;
+        } else {
+          console.error("AI generation failed:", await response.text());
+          return null;
         }
       } catch (error) {
-        console.error("AI generation failed:", error)
+        console.error("AI generation failed:", error);
+        return null;
       } finally {
-        setIsGenerating(false)
+        setIsGenerating(false);
       }
-      return null
     },
-    [document.type],
-  )
+    [document.type, document.title]
+  );
 
   const updateDocument = useCallback((updates: Partial<Document>) => {
     setDocument((prev) => ({ ...prev, ...updates }))

@@ -17,6 +17,7 @@ def create_template(
     Create new template.
     """
     try:
+        service = TemplateService(db)
         template = service.create_template(template_in)
         return template
     except ValueError as e:

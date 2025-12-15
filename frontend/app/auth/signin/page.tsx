@@ -25,7 +25,7 @@ export default function SignInPage() {
     setError("");
 
     try {
-      const response = await fetch("http://localhost:8000/api/v1/auth/login/access-token", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/login/access-token`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
