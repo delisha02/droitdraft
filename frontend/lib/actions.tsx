@@ -5,15 +5,34 @@ export async function signIn(formData: FormData) {
   const email = formData.get("email") as string
   const password = formData.get("password") as string
 
-  // Simulate authentication
-  await new Promise((resolve) => setTimeout(resolve, 1000))
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/login/access-token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        username: email,
+        password: password,
+      }).toString(),
+    });
 
-  if (email && password) {
-    // In a real app, you'd validate credentials and create a session
-    return { success: true, message: "Signed in successfully" }
+    if (response.ok) {
+      const data = await response.json();
+      return {
+        success: true,
+        message: "Signed in successfully",
+        accessToken: data.access_token,
+        email: email
+      }
+    } else {
+      const errorData = await response.json();
+      return { success: false, message: errorData.detail || "Invalid email or password" }
+    }
+  } catch (error) {
+    console.error("Auth error:", error);
+    return { success: false, message: "An error occurred during sign in" }
   }
-
-  return { success: false, message: "Invalid credentials" }
 }
 
 // Document Actions

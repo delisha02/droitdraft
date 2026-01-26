@@ -23,10 +23,13 @@ app.add_middleware(
 
 @app.on_event("startup")
 def startup_event():
-    storage_client = get_storage()
-    bucket_name = settings.MINIO_BUCKET
-    if not storage_client.bucket_exists(bucket_name):
-        storage_client.make_bucket(bucket_name)
+    try:
+        storage_client = get_storage()
+        bucket_name = settings.MINIO_BUCKET
+        if not storage_client.bucket_exists(bucket_name):
+            storage_client.make_bucket(bucket_name)
+    except Exception as e:
+        print(f"Warning: Could not initialize storage bucket: {e}")
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 

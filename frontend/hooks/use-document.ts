@@ -11,7 +11,7 @@ export interface Document {
 }
 
 export function useDocument(initialDocument?: Document) {
-  const [document, setDocument] = useState<Document>(
+  const [doc, setDoc] = useState<Document>(
     initialDocument || {
       title: "Untitled Document",
       content: "",
@@ -20,34 +20,63 @@ export function useDocument(initialDocument?: Document) {
   );
   const [isSaving, setIsSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
   const [lastSaved, setLastSaved] = useState<string>();
+
+  const fetchDocument = useCallback(async (id: string) => {
+    setIsFetching(true);
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      setIsFetching(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/documents/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setDoc(data);
+      } else {
+        console.error("Failed to fetch document:", await response.text());
+      }
+    } catch (error) {
+      console.error("Error fetching document:", error);
+    } finally {
+      setIsFetching(false);
+    }
+  }, []);
 
   // Auto-save functionality
   useEffect(() => {
     const autoSave = setTimeout(() => {
-      if (document.content.trim()) {
+      if (doc.content.trim() && !isSaving && !isFetching) {
         handleSave();
       }
     }, 30000); // Auto-save every 30 seconds
 
     return () => clearTimeout(autoSave);
-  }, [document.content]);
+  }, [doc.content, doc.id]);
 
   const handleSave = useCallback(async () => {
+    if (isSaving) return;
     setIsSaving(true);
     const token = localStorage.getItem("accessToken");
     if (!token) {
-      // Handle case where user is not authenticated
       console.error("Authentication token not found.");
       setIsSaving(false);
       return;
     }
 
     try {
-      const url = document.id
-        ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/documents/${document.id}`
+      const url = doc.id
+        ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/documents/${doc.id}`
         : `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/documents/`;
-      const method = document.id ? "PUT" : "POST";
+      const method = doc.id ? "PUT" : "POST";
 
       const response = await fetch(url, {
         method,
@@ -56,15 +85,18 @@ export function useDocument(initialDocument?: Document) {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          title: document.title,
-          content: document.content,
+          title: doc.title,
+          content: doc.content,
         }),
       });
 
       if (response.ok) {
         const result = await response.json();
-        setDocument((prev) => ({ ...prev, id: result.id }));
+        const updatedDoc = { ...doc, id: result.id };
+        setDoc(updatedDoc);
         setLastSaved(new Date().toISOString());
+        setIsSaving(false);
+        return updatedDoc;
       } else {
         console.error("Save failed:", await response.text());
       }
@@ -73,7 +105,7 @@ export function useDocument(initialDocument?: Document) {
     } finally {
       setIsSaving(false);
     }
-  }, [document]);
+  }, [doc, isSaving]);
 
   const handleGenerateAI = useCallback(
     async (prompt: string) => {
@@ -95,16 +127,16 @@ export function useDocument(initialDocument?: Document) {
               Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({
-              template_id: parseInt(document.type, 10),
+              template_id: parseInt(doc.type, 10),
               case_facts: { prompt },
-              title: document.title,
+              title: doc.title,
             }),
           }
         );
 
         if (response.ok) {
           const result = await response.json();
-          setDocument(result);
+          setDoc(result);
           return result.content;
         } else {
           console.error("AI generation failed:", await response.text());
@@ -117,11 +149,11 @@ export function useDocument(initialDocument?: Document) {
         setIsGenerating(false);
       }
     },
-    [document.type, document.title]
+    [doc.type, doc.title]
   );
 
   const updateDocument = useCallback((updates: Partial<Document>) => {
-    setDocument((prev) => ({ ...prev, ...updates }))
+    setDoc((prev) => ({ ...prev, ...updates }))
   }, [])
 
   const exportDocument = useCallback(
@@ -133,8 +165,8 @@ export function useDocument(initialDocument?: Document) {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            content: document.content,
-            title: document.title,
+            content: doc.content,
+            title: doc.title,
             format,
           }),
         })
@@ -143,9 +175,9 @@ export function useDocument(initialDocument?: Document) {
 
         if (result.success) {
           // Create a temporary link to download the file
-          const link = document.createElement("a")
+          const link = window.document.createElement("a")
           link.href = result.downloadUrl
-          link.download = `${document.title}.${format}`
+          link.download = `${doc.title}.${format}`
           link.click()
         }
 
@@ -155,15 +187,17 @@ export function useDocument(initialDocument?: Document) {
         return { success: false, message: "Export failed" }
       }
     },
-    [document],
+    [doc],
   )
 
   return {
-    document,
+    document: doc,
     isSaving,
     isGenerating,
+    isFetching,
     lastSaved,
     handleSave,
+    fetchDocument,
     handleGenerateAI,
     updateDocument,
     exportDocument,

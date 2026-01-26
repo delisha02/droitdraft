@@ -12,7 +12,7 @@ class DocumentBase(BaseModel):
 
 
 class DocumentCreate(DocumentBase):
-    owner_id: int
+    pass
 
 
 class DocumentUpdate(DocumentBase):

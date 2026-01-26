@@ -26,7 +26,11 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
       const result = await signIn(formData)
       setMessage(result.message)
 
-      if (result.success) {
+      if (result.success && result.accessToken) {
+        localStorage.setItem("isAuthenticated", "true");
+        localStorage.setItem("accessToken", result.accessToken);
+        if (result.email) localStorage.setItem("userEmail", result.email);
+
         setTimeout(() => {
           onClose()
           window.location.reload()

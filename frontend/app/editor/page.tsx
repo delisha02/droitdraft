@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, Suspense } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
@@ -38,7 +38,7 @@ import {
   Sparkles,
 } from "lucide-react"
 import LinkComponent from "next/link"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import { useDocument } from "@/hooks/use-document"
 import { ShareModal } from "@/components/share-modal"
 
@@ -76,7 +76,7 @@ const fontSizes = ["8", "9", "10", "11", "12", "14", "16", "18", "20", "24", "28
 
 const lineHeights = ["1.0", "1.15", "1.5", "2.0", "2.5", "3.0"]
 
-export default function EditorPage() {
+function EditorContent() {
   const searchParams = useSearchParams()
   const docType = searchParams.get("type") || "contracts"
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
@@ -85,12 +85,22 @@ export default function EditorPage() {
   const [currentLineHeight, setCurrentLineHeight] = useState("1.5")
   const [aiPrompt, setAiPrompt] = useState("")
   const editorRef = useRef<HTMLDivElement>(null)
+  const router = useRouter()
+
+  useEffect(() => {
+    const isAuthenticated = localStorage.getItem("isAuthenticated");
+    if (isAuthenticated !== "true") {
+      router.push("/auth/signin");
+    }
+  }, [router]);
 
   const {
     document: doc,
     isSaving,
     lastSaved,
-    handleSave,
+    isFetching,
+    handleSave: handleSaveHook,
+    fetchDocument,
     updateDocument,
     handleGenerateAI: handleAiGenerateFromHook,
     isGenerating,
@@ -99,6 +109,21 @@ export default function EditorPage() {
     content: "",
     type: docType,
   })
+
+  useEffect(() => {
+    const docId = searchParams.get("id");
+    if (docId) {
+      fetchDocument(docId);
+    }
+  }, [searchParams, fetchDocument]);
+
+  const handleSave = async () => {
+    const savedDoc = await handleSaveHook();
+    if (savedDoc && savedDoc.id && !searchParams.get("id")) {
+      // Update URL with the new ID without reloading the page
+      router.replace(`/editor?type=${docType}&id=${savedDoc.id}`);
+    }
+  }
 
   // Rich text formatting functions
   const execCommand = (command: string, value?: string) => {
@@ -345,10 +370,10 @@ export default function EditorPage() {
       const selection = window.getSelection();
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
-        const div = window.document.createElement("div");
-        div.innerHTML = generatedContent;
+        const newElement = window.document.createElement("div");
+        newElement.innerHTML = generatedContent;
         range.deleteContents();
-        range.insertNode(div);
+        range.insertNode(newElement);
       } else {
         editorRef.current.innerHTML += generatedContent;
       }
@@ -357,8 +382,22 @@ export default function EditorPage() {
     }
   }
 
+  const hasSyncedRef = useRef(false);
+
+  // Sync document content to editor when fetched or initialized
   useEffect(() => {
-    if (editorRef.current && !doc.content) {
+    if (editorRef.current && doc.content && !isFetching && !hasSyncedRef.current) {
+      // If we have an ID, it's a fetch. If not, it's the first template set.
+      if (searchParams.get("id")) {
+        editorRef.current.innerHTML = doc.content;
+        hasSyncedRef.current = true;
+      }
+    }
+  }, [isFetching, doc.id]);
+
+  useEffect(() => {
+    // Only set initial template for NEW documents that are NOT being fetched
+    if (editorRef.current && !doc.content && !isFetching && !searchParams.get("id") && !hasSyncedRef.current) {
       const initialContent = `
         <div style="font-family: ${currentFont}; font-size: ${currentFontSize}pt; line-height: ${currentLineHeight};">
           <div style="text-align: center; margin-bottom: 2em;">
@@ -376,8 +415,9 @@ export default function EditorPage() {
       `
       editorRef.current.innerHTML = initialContent
       updateDocument({ content: initialContent })
+      hasSyncedRef.current = true; // Mark as initialized even for new docs
     }
-  }, [docType, currentFont, currentFontSize, currentLineHeight])
+  }, [docType, currentFont, currentFontSize, currentLineHeight, isFetching])
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -385,11 +425,15 @@ export default function EditorPage() {
       <header className="bg-white border-b border-gray-200 px-4 py-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <LinkComponent href="/" className="flex items-center space-x-2">
+            <LinkComponent href="/dashboard" className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <Scale className="w-5 h-5 text-white" />
               </div>
               <span className="font-semibold text-gray-900">DroitDraft</span>
+            </LinkComponent>
+            <Separator orientation="vertical" className="h-6" />
+            <LinkComponent href="/dashboard" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">
+              Dashboard
             </LinkComponent>
             <Separator orientation="vertical" className="h-6" />
             <div className="flex items-center space-x-2">
@@ -412,13 +456,22 @@ export default function EditorPage() {
               <Share className="w-4 h-4 mr-2" />
               Share
             </Button>
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={handleSave} disabled={isSaving}>
+            <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={handleSave} disabled={isSaving || isFetching}>
               <Save className="w-4 h-4 mr-2" />
               {isSaving ? "Saving..." : "Save"}
             </Button>
           </div>
         </div>
       </header>
+
+      {isFetching && (
+        <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-[100] flex items-center justify-center">
+          <div className="flex flex-col items-center space-y-4">
+            <Scale className="w-12 h-12 text-blue-600 animate-pulse" />
+            <p className="text-lg font-medium text-gray-900">Loading document...</p>
+          </div>
+        </div>
+      )}
 
       {/* Toolbar */}
       <div className="bg-white border-b border-gray-200 px-4 py-2">
@@ -584,7 +637,7 @@ export default function EditorPage() {
             </Button>
             <Button variant="ghost" size="sm" onClick={() => formatText("outdent")}>
               <Outdent className="w-4 h-4" />
-            </BinnerText>
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => formatText("indent")}>
               <Indent className="w-4 h-4" />
             </Button>
@@ -783,5 +836,13 @@ export default function EditorPage() {
         documentTitle={doc.title}
       />
     </div>
+  )
+}
+
+export default function EditorPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading editor...</div>}>
+      <EditorContent />
+    </Suspense>
   )
 }
