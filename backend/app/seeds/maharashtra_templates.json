@@ -1,0 +1,56 @@
+[
+  {
+    "name": "Standard Will (Maharashtra)",
+    "description": "Last Will and Testament for Hindu/Christian/Parsi individuals in Maharashtra. Based on Indian Succession Act 1925 and Hindu Succession Act 1956.",
+    "document_type": "will",
+    "jurisdiction": "Maharashtra",
+    "version": "1.0",
+    "author": "DroitDraft Legal Research",
+    "content": "Drafting Date: {{ drafting_date }}\n\nLAST WILL AND TESTAMENT\n\nI, {{ testator_full_name }}, aged about {{ testator_age }} years, residing at {{ testator_address }}, do hereby revoke all my former Wills and Covenants and declare this to be my Last Will and Testament.\n\n1. DECLARATION: I am in my sound state of mind and body and I am making this Will without any pressure or influence from any person.\n\n2. EXECUTOR: I hereby appoint {{ executor_name }}, residing at {{ executor_address }}, as the Sole Executor of this my Will.\n\n3. BENEFICIARIES AND ASSETS: I give and bequeath my properties as follows:\n- Immovable Property: {{ immovable_property_description }} shall go to {{ immovable_beneficiary_name }}.\n- Movable Assets: {{ movable_assets_description }} shall go to {{ movable_beneficiary_name }}.\n\n4. ATTESTATION: In witness whereof I, the Testator, have signed this Will at {{ place_of_execution }} on this {{ date_of_execution }}.\n\nSigned by the Testator: __________________\n\nWITNESSES:\n1. {{ witness1_name }}, {{ witness1_address }}\n2. {{ witness2_name }}, {{ witness2_address }}\n\n(Note: This draft follows the simple format recommended by Law Mumbai and Sec 63 of the Indian Succession Act 1925.)"
+  },
+  {
+    "name": "Probate Petition (Bombay High Court)",
+    "description": "Petition for grant of Probate of a Will. Based on Bombay High Court (Original Side) Rules and ISA 1925.",
+    "document_type": "probate_petition",
+    "jurisdiction": "Maharashtra",
+    "version": "1.0",
+    "author": "DroitDraft Legal Research",
+    "content": "Drafting Date: {{ drafting_date }}\n\nIN THE HIGH COURT OF JUDICATURE AT BOMBAY\nORDINARY ORIGINAL CIVIL JURISDICTION\nTESTAMENTARY AND INTESTATE JURISDICTION\n\nPETITION NO. ____ OF 2026\n\nIn the matter of the Last Will and Testament of:\n{{ deceased_name }}, Deceased.\n\n{{ petitioner_name }} ... Petitioner\n\nTO,\nTHE HONORABLE CHIEF JUSTICE AND OTHER COMPANION JUSTICES OF THE HIGH COURT.\n\nTHE PETITION OF THE PETITIONER ABOVENAMED STATES AS UNDER:\n\n1. The Petitioner is the Sole Executor named in the Will dated {{ will_date }} of the deceased {{ deceased_name }}.\n2. The deceased died at {{ place_of_death }} on or about {{ date_of_death }}.\n3. The deceased at the time of death had a fixed place of abode at {{ deceased_address }} within the local jurisdiction of this Court.\n4. The Petitioner has listed the assets and liabilities in Schedule I and II.\n5. PRAYER: Your Petitioner prays that Probate of the said Will may be granted to him having effect throughout the State of Maharashtra.\n\nVerification: I, {{ petitioner_name }}, do hereby declare that what is stated above is true to my knowledge.\n\n(Note: Based on Proforma provided by Bombay High Court under Rule 374.)"
+  },
+  {
+    "name": "Letters of Administration (Intestate)",
+    "description": "Petition for Letters of Administration when the deceased died intestate. Based on ISA 1925 Sec 218.",
+    "document_type": "loa_petition",
+    "jurisdiction": "Maharashtra",
+    "version": "1.0",
+    "author": "DroitDraft Legal Research",
+    "content": "Drafting Date: {{ drafting_date }}\n\nIN THE HIGH COURT OF JUDICATURE AT BOMBAY\nTESTAMENTARY AND INTESTATE JURISDICTION\n\nPETITION FOR LETTERS OF ADMINISTRATION\n\nIn the matter of the Estate of {{ deceased_name }}, Deceased.\n\n{{ petitioner_name }} ... Petitioner (Relation: {{ petitioner_relation }})\n\n1. The abovenamed deceased died intestate at {{ place_of_death }} on {{ date_of_death }}.\n2. The legal heirs of the deceased are: {{ list_of_heirs }}.\n3. No Will or other Testamentary disposition has been found.\n4. The Petitioner is the {{ petitioner_relation }} and is entitled to a share in the estate.\n5. The total value of the estate is estimated at Rs. {{ estate_value }}.\n\nPrayer: That Letters of Administration may be granted to the Petitioner.\n\n(Note: Based on High Court of Bombay templates for Intestate Succession.)"
+  },
+  {
+    "name": "Development Agreement (Housing Society)",
+    "description": "Agreement for redevelopment between a Housing Society and Developer. Based on MOFA and RERA.",
+    "document_type": "development_agreement",
+    "jurisdiction": "Maharashtra",
+    "version": "1.0",
+    "author": "DroitDraft Legal Research",
+    "content": "Drafting Date: {{ drafting_date }}\n\nDEVELOPMENT AGREEMENT\n\nTHIS AGREEMENT is made at {{ location }} on this {{ date }}\n\nBETWEEN: {{ society_name }}, a Co-operative Housing Society registered under the Maharashtra Co-operative Societies Act, 1960, having its address at {{ society_address }}, hereinafter called 'The Society'.\n\nAND: {{ developer_name }}, a Company/Firm having its office at {{ developer_address }}, hereinafter called 'The Developer'.\n\nWHEREAS:\n1. The Society is the owner of the land and building known as {{ property_name }}.\n2. The Society has invited proposals for redevelopment as per the General Body Resolution dated {{ resolution_date }}.\n\nCORE CLAUSES:\n- FSI/TDR: The Developer shall utilize the base FSI and purchase TDR as per MCGM/DCR rules.\n- RERA: The Developer shall register the project under MahaRERA.\n- CORPUS: The Developer shall pay Rs. {{ corpus_amount }} to the Society.\n- ALTERNATE ACCOMMODATION: The Developer shall provide rent of Rs. {{ monthly_rent }} per month to each member.\n\n(Note: Structure derived from standard redevelopment formats for Maharashtra Housing Societies, incorporating Circular No. 79A requirements.)"
+  },
+  {
+    "name": "Sale Deed (Residential Flat)",
+    "description": "Deed of Sale for transfer of ownership of a flat in Maharashtra. Based on Registration Act 1908.",
+    "document_type": "sale_deed",
+    "jurisdiction": "Maharashtra",
+    "version": "1.0",
+    "author": "DroitDraft Legal Research",
+    "content": "Drafting Date: {{ drafting_date }}\n\nDEED OF SALE\n\nTHIS DEED OF SALE is executed at {{ location }} on {{ date }}\n\nBETWEEN: {{ seller_name }}, residing at {{ seller_address }}, hereinafter called 'The Vendor'.\n\nAND: {{ buyer_name }}, residing at {{ buyer_address }}, hereinafter called 'The Purchaser'.\n\n1. PROPERTY: All that piece and parcel of Flat No. {{ flat_number }}, on the {{ floor }} floor of the building known as {{ building_name }}.\n2. CONSIDERATION: The Vendor has agreed to sell and the Purchaser has agreed to buy the property for a total consideration of Rs. {{ sale_price }}.\n3. POSSESSION: The Vendor has handed over the vacant and peaceful possession of the property to the Purchaser.\n4. INDEMNITY: The Vendor assures that the property is free from all encumbrances and lithigations.\n\nSCHEDULE OF PROPERTY:\nDetailed Description: {{ property_schedule }}\n\n(Note: Based on model forms from Maharashtra Housing and Building Laws and NoBroker Maharashtra templates.)"
+  },
+  {
+    "name": "Legal Notice (Civil/Property)",
+    "description": "Generic Legal Notice for property disputes or recovery of dues. Triage-ready.",
+    "document_type": "legal_notice",
+    "jurisdiction": "Maharashtra",
+    "version": "1.0",
+    "author": "DroitDraft Legal Research",
+    "content": "Drafting Date: {{ drafting_date }}\n\nLEGAL NOTICE\n\nTo,\n{{ recipient_name }}\n{{ recipient_address }}\n\nSubject: {{ notice_subject }}\n\nDear Sir/Madam,\n\nUnder instructions from my client, {{ client_name }}, residing at {{ client_address }}, I hereby serve you with the following legal notice:\n\n1. My client is the owner/aggrieved party in the matter of {{ matter_summary }}.\n2. FACTUAL BACKGROUND: {{ factual_details }}\n3. GRIEVANCE: That you have failed to {{ breach_description }}.\n4. DEMAND: You are hereby called upon to {{ demand_action }} within {{ notice_period }} days from the receipt of this notice.\n5. CAUSE OF ACTION: Failing which, my client has given me clear instructions to initiate civil/criminal proceedings against you at your cost and consequences.\n\nYours faithfully,\n\n{{ lawyer_name }}\nAdvocate, {{ city }}\n\n(Note: Derived from LexForti and iPleaders standard Indian legal notice modules.)"
+  }
+]

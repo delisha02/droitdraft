@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, Plus } from "lucide-react";
+import { FileText, Plus, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 interface Document {
@@ -18,6 +18,7 @@ export function DocumentList() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isDeleting, setIsDeleting] = useState<number | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -54,6 +55,34 @@ export function DocumentList() {
     fetchDocuments();
   }, [router]);
 
+  const handleDelete = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this document?")) return;
+
+    setIsDeleting(id);
+    const token = localStorage.getItem("accessToken");
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/documents/${id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        setDocuments((prev) => prev.filter((doc) => doc.id !== id));
+      } else {
+        alert("Failed to delete document.");
+      }
+    } catch (error) {
+      alert("An error occurred while deleting.");
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
   if (isLoading) {
     return <div>Loading documents...</div>;
   }
@@ -81,8 +110,27 @@ export function DocumentList() {
               <Card key={doc.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
-                    <span className="truncate">{doc.title}</span>
-                    <FileText className="w-5 h-5 text-gray-400" />
+                    <div className="flex items-center space-x-2 truncate">
+                      <FileText className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                      <span className="truncate">{doc.title}</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-gray-400 hover:text-red-600 transition-colors"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleDelete(doc.id);
+                      }}
+                      disabled={isDeleting === doc.id}
+                    >
+                      {isDeleting === doc.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                    </Button>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
