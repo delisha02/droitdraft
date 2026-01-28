@@ -36,6 +36,11 @@ import {
   Link,
   Type,
   Sparkles,
+  FileUp,
+  X,
+  Loader2,
+  Paperclip,
+  Trash2,
 } from "lucide-react"
 import LinkComponent from "next/link"
 import { useSearchParams, useRouter } from "next/navigation"
@@ -76,6 +81,9 @@ function EditorContent() {
   const [currentLineHeight, setCurrentLineHeight] = useState("1.5")
   const [aiPrompt, setAiPrompt] = useState("")
   const [templateData, setTemplateData] = useState<any>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [isExtracting, setIsExtracting] = useState<string | null>(null)
+  const [uploadedFiles, setUploadedFiles] = useState<{ id: string, name: string }[]>([])
   const editorRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
@@ -419,6 +427,161 @@ function EditorContent() {
     }
   }, [isFetching, doc.content, templateData, editorRef.current, doc.id]);
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const token = localStorage.getItem("accessToken");
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/upload/`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      console.log("Upload response status:", response.status);
+
+      if (response.ok) {
+        const data = await response.json();
+        setUploadedFiles(prev => [...prev, { id: data.filename, name: data.original_name }]);
+      } else {
+        alert("Failed to upload file.");
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      alert("An error occurred during upload.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const removeFile = (id: string) => {
+    setUploadedFiles(prev => prev.filter(f => f.id !== id));
+  };
+
+  const handleScanFacts = async (id: string) => {
+    setIsExtracting(id);
+    const token = localStorage.getItem("accessToken");
+    try {
+      const encodedId = encodeURIComponent(id);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/upload/extract/${encodedId}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        applyFactsToDraft(data.facts);
+      } else {
+        alert("Failed to extract facts.");
+      }
+    } catch (error) {
+      console.error("Extraction error:", error);
+      alert("An error occurred during scanning.");
+    } finally {
+      setIsExtracting(null);
+    }
+  };
+
+  const applyFactsToDraft = (facts: any) => {
+    if (!editorRef.current) return;
+    let content = editorRef.current.innerHTML;
+
+    // Map extracted facts to common placeholders
+    const mappings: { [key: string]: string } = {};
+
+    // Parties
+    if (facts.parties) {
+      facts.parties.forEach((p: any, i: number) => {
+        const role = p.role?.toLowerCase() || '';
+        const prefix = role || `party${i + 1}`;
+
+        // General mappings
+        mappings[`{{ ${prefix}_name }}`] = p.name;
+        mappings[`{{ ${prefix}_full_name }}`] = p.name;
+        mappings[`{{ ${prefix}_address }}`] = p.address;
+
+        // Specific role-based mappings for Maharashtra templates
+        if (role === 'testator') {
+          mappings['{{ testator_full_name }}'] = p.name;
+          mappings['{{ testator_address }}'] = p.address;
+        } else if (role === 'executor') {
+          mappings['{{ executor_name }}'] = p.name;
+          mappings['{{ executor_address }}'] = p.address;
+        } else if (role === 'deceased') {
+          mappings['{{ deceased_name }}'] = p.name;
+          mappings['{{ deceased_address }}'] = p.address;
+        } else if (role === 'seller' || role === 'vendor') {
+          mappings['{{ seller_name }}'] = p.name;
+          mappings['{{ seller_address }}'] = p.address;
+        } else if (role === 'buyer' || role === 'purchaser') {
+          mappings['{{ buyer_name }}'] = p.name;
+          mappings['{{ buyer_address }}'] = p.address;
+        } else if (role === 'petitioner') {
+          mappings['{{ petitioner_name }}'] = p.name;
+        }
+      });
+    }
+
+    // Dates
+    if (facts.timeline) {
+      facts.timeline.forEach((t: any) => {
+        const desc = t.description?.toLowerCase() || '';
+        if (desc.includes("death")) {
+          mappings['{{ date_of_death }}'] = t.date;
+        } else if (desc.includes("execution") || desc.includes("signed")) {
+          mappings['{{ date_of_execution }}'] = t.date;
+          mappings['{{ will_date }}'] = t.date;
+        } else if (desc.includes("notice")) {
+          mappings['{{ date_of_notice }}'] = t.date;
+        }
+      });
+    }
+
+    // Location
+    if (facts.location) {
+      mappings['{{ place_of_execution }}'] = facts.location;
+      mappings['{{ place_of_death }}'] = facts.location;
+      mappings['{{ location }}'] = facts.location;
+    }
+
+    // Apply mappings
+    let matchCount = 0;
+
+    Object.keys(mappings).forEach(key => {
+      if (mappings[key]) {
+        // Create a robust regex: 
+        // 1. Escape special characters
+        // 2. Allow any amount of whitespace (\s*) where a space exists in the key
+        // 3. Case-insensitive matching
+        const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+          .replace(/\\ /g, '\\s*');
+        const regex = new RegExp(escapedKey, 'gi');
+
+        if (content.match(regex)) {
+          content = content.replace(regex, `<span class="bg-yellow-100 border-b border-yellow-400 font-medium">${mappings[key]}</span>`);
+          matchCount++;
+        }
+      }
+    });
+
+    if (matchCount > 0) {
+      editorRef.current.innerHTML = content;
+      updateDocument({ content });
+      alert(`Facts extracted! ${matchCount} types of facts were populated and highlighted.`);
+    } else {
+      alert("No matching {{ placeholders }} were found in this document to populate with extracted facts.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
@@ -672,27 +835,80 @@ function EditorContent() {
             </div>
 
             <div className="space-y-3">
-              <Textarea
-                placeholder="Describe what you want to generate (e.g., 'Create a confidentiality clause for software development')"
-                value={aiPrompt}
-                onChange={(e) => setAiPrompt(e.target.value)}
-                className="min-h-[100px] resize-none"
-              />
+              <div className="relative border rounded-md focus-within:ring-1 focus-within:ring-blue-500 bg-white">
+                <Textarea
+                  placeholder="Describe what you want to generate or upload evidence to extract facts..."
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  className="min-h-[120px] resize-none border-0 focus-visible:ring-0 pr-10"
+                />
+                <div className="absolute bottom-2 right-2 flex items-center space-x-2">
+                  <input
+                    type="file"
+                    id="unified-upload"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                    accept=".pdf,image/*"
+                  />
+                  <label
+                    htmlFor="unified-upload"
+                    className="p-1.5 text-gray-400 hover:text-blue-600 cursor-pointer rounded-md hover:bg-gray-100 transition-colors"
+                    title="Upload source document"
+                  >
+                    <Paperclip className="w-4 h-4" />
+                  </label>
+                </div>
+              </div>
+
+              {/* Uploaded Files Chips */}
+              {uploadedFiles.length > 0 && (
+                <div className="flex flex-wrap gap-2 py-1">
+                  {uploadedFiles.map((file) => (
+                    <Badge key={file.id} variant="secondary" className="px-2 py-1 flex items-center gap-1.5 bg-blue-50 text-blue-700 border-blue-100">
+                      <FileText className="w-3 h-3" />
+                      <span className="max-w-[120px] truncate text-[10px]">{file.name}</span>
+                      <button
+                        onClick={() => removeFile(file.id)}
+                        className="hover:text-red-600 transition-colors"
+                        title="Remove file"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
+              {isUploading && (
+                <div className="flex items-center text-[10px] text-blue-600 px-1 animate-pulse">
+                  <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                  Uploading source...
+                </div>
+              )}
 
               <Button
-                onClick={handleAiGenerate}
-                className="w-full bg-blue-600 hover:bg-blue-700"
-                disabled={isGenerating || !aiPrompt.trim()}
+                onClick={uploadedFiles.length > 0 && !aiPrompt.trim() ? () => handleScanFacts(uploadedFiles[0].id) : handleAiGenerate}
+                className="w-full bg-blue-600 hover:bg-blue-700 h-9"
+                disabled={isGenerating || isUploading || (!!isExtracting) || (!aiPrompt.trim() && uploadedFiles.length === 0)}
               >
-                {isGenerating ? (
+                {isGenerating || isExtracting ? (
                   <>
-                    <Bot className="w-4 h-4 mr-2 animate-spin" />
-                    Generating...
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {isGenerating ? "Generating..." : "Extracting Facts..."}
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Generate Content
+                    {uploadedFiles.length > 0 && !aiPrompt.trim() ? (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Populate from Evidence
+                      </>
+                    ) : (
+                      <>
+                        <Bot className="w-4 h-4 mr-2" />
+                        Generate Content
+                      </>
+                    )}
                   </>
                 )}
               </Button>
@@ -701,8 +917,8 @@ function EditorContent() {
             <Separator />
 
             <div>
-              <h4 className="font-medium text-gray-900 mb-3">Quick Suggestions</h4>
-              <div className="space-y-2">
+              <h4 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Quick Suggestions</h4>
+              <div className="space-y-1.5">
                 {[
                   "Add a confidentiality clause",
                   "Generate payment terms",
@@ -715,10 +931,10 @@ function EditorContent() {
                     key={index}
                     variant="ghost"
                     size="sm"
-                    className="w-full justify-start text-xs h-auto py-2 px-3 text-left"
+                    className="w-full justify-start text-xs h-auto py-1.5 px-3 text-left hover:bg-gray-50"
                     onClick={() => setAiPrompt(suggestion)}
                   >
-                    <Type className="w-3 h-3 mr-2 flex-shrink-0" />
+                    <Type className="w-3 h-3 mr-2 flex-shrink-0 text-gray-400" />
                     {suggestion}
                   </Button>
                 ))}

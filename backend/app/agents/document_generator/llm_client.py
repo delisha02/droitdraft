@@ -45,7 +45,33 @@ class LLMClient:
         self.groq_client = None
 
         if GEMINI_API_KEY and GEMINI_API_KEY.strip():
-            self.gemini_model = gemini_model or genai.GenerativeModel('gemini-1.5-flash')
+            try:
+                # Try to find the most suitable model dynamically
+                # This avoids hardcoded model names that might not be available in all regions/keys
+                available_models = [
+                    m.name.replace('models/', '') 
+                    for m in genai.list_models() 
+                    if 'generateContent' in m.supported_generation_methods 
+                    and 'flash' in m.name.lower()
+                ]
+                
+                if available_models:
+                    # Prefer 1.5-flash if available, otherwise use the first flash model
+                    if 'gemini-1.5-flash' in available_models:
+                        model_name = 'gemini-1.5-flash'
+                    elif 'gemini-1.5-flash-latest' in available_models:
+                        model_name = 'gemini-1.5-flash-latest'
+                    else:
+                        model_name = available_models[0]
+                    
+                    print(f"Gemini initialized with model: {model_name}")
+                    self.gemini_model = gemini_model or genai.GenerativeModel(model_name)
+                else:
+                    # Fallback to standard if listing fails or no flash found
+                    self.gemini_model = gemini_model or genai.GenerativeModel('gemini-1.5-flash')
+            except Exception as e:
+                print(f"Warning: Gemini model detection failed ({e}). Falling back to 'gemini-1.5-flash'.")
+                self.gemini_model = gemini_model or genai.GenerativeModel('gemini-1.5-flash')
         else:
             self.gemini_model = None
 
@@ -71,19 +97,23 @@ class LLMClient:
             raise ValueError("Gemini client not configured. Please provide a GEMINI_API_KEY.")
         
         response = await self.gemini_model.generate_content_async(prompt)
-        return response.text
+        
+        # Safely handle the response
+        try:
+            return response.text
+        except ValueError:
+            # This often happens if the response was blocked by safety filters
+            # or if there are no candidates.
+            if response.candidates:
+                # Try to get the text from the first candidate if available
+                try:
+                    return response.candidates[0].content.parts[0].text
+                except:
+                    pass
+            print(f"Gemini response has no text content. Feedback: {response.prompt_feedback}")
+            return "Error: Could not extract text from LLM response. The content might have been blocked or is empty."
 
     async def generate(self, prompt: str, use_groq: bool = True) -> str:
-        # if use_groq and self.groq_client:
-        #     try:
-        #         return await self.generate_with_groq(prompt)
-        #     except Exception as e:
-        #         print(f"Groq generation failed: {e}. Falling back to Gemini.")
-        #         if self.gemini_model:
-        #             return await self.generate_with_gemini(prompt)
-        #         else:
-        #             raise
-        # elif self.gemini_model:
         if self.gemini_model:
             return await self.generate_with_gemini(prompt)
         else:
