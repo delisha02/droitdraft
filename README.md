@@ -11,17 +11,19 @@ DroitDraft is a state-of-the-art AI-powered legal document generation platform. 
 
 ---
 
-## 1. Database Setup (Docker)
+## 1. Environment Setup (Docker)
 
-The project uses PostgreSQL running in a Docker container.
+The project relies on three key Docker services:
+- **PostgreSQL**: Primary data store for users and templates.
+- **MinIO**: S3-compatible storage for uploaded evidence files.
+- **ChromaDB**: Vector database for legal research and RAG.
 
-1. **Start the database container**:
+1. **Start all required containers**:
    ```powershell
-   docker start postgres_db
+   docker start postgres_db compassionate_buck great_banzai
    ```
-   *(Ensure your Docker Desktop or daemon is running)*
 
-2. **Database Permissions Fix** (Required for first-time setup or if migrations fail):
+2. **Database Permissions** (First-time setup):
    ```powershell
    docker exec -it postgres_db psql -U droitdraft_user -d droitdraft_dev -c "GRANT ALL ON SCHEMA public TO droitdraft_user;"
    ```
@@ -30,73 +32,31 @@ The project uses PostgreSQL running in a Docker container.
 
 ## 2. Backend Setup
 
-1. **Navigate to backend directory**:
+1. **Navigate to backend**: `cd backend`
+2. **Setup Venv**: `python -m venv .venv` and activate it.
+3. **Install Core**: `pip install -r requirements.txt`
+4. **Environment**: Create `.env`. Ensure `GROQ_API_KEY` and `GEMINI_API_KEY` are present.
+5. **Seeding**: To load the professional Maharashtra templates:
    ```powershell
-   cd backend
+   python scripts/seed_db.py
    ```
-
-2. **Create and Activate Virtual Environment**:
-   ```powershell
-   python -m venv .venv
-   # Windows:
-   .venv\Scripts\activate
-   # macOS/Linux:
-   source .venv/bin/activate
-   ```
-
-3. **Install Dependencies**:
-   ```powershell
-   pip install -r requirements.txt
-   ```
-
-4. **Environment Configuration**:
-   Create a `.env` file in the `backend/` directory from `.env.example`. Ensure your `DATABASE_URL` matches your local docker setup.
-
-5. **Run the Backend Server**:
-   ```powershell
-   uvicorn app.main:app --host 0.0.0.0 --port 8002 --reload
-   ```
-   *The API will be available at `http://localhost:8002`*
+6. **Run**: `uvicorn app.main:app --host 0.0.0.0 --port 8002 --reload`
 
 ---
 
 ## 3. Frontend Setup
 
-1. **Navigate to frontend directory**:
-   ```powershell
-   cd frontend
-   ```
-
-2. **Install Dependencies**:
-   ```powershell
-   npm install
-   ```
-
-3. **Environment Configuration**:
-   Ensure `frontend/.env.local` has the following:
-   ```env
-   NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8002
-   ```
-
-4. **Run the Frontend Server**:
-   ```powershell
-   npm run dev
-   ```
-   *The application will be available at `http://localhost:3001`*
+1. **Navigate to frontend**: `cd frontend`
+2. **Install**: `npm install`
+3. **Run**: `npm run dev -- -p 3001`
+   *Available at `http://localhost:3001`*
 
 ---
 
-## 4. Testing & Verification
+## 🚀 Key Features Implemented
 
-- **API Documentation**: Visit `http://localhost:8002/docs` (Swagger UI).
-- **Dashboard**: Visit `http://localhost:3001/dashboard`.
-- **Sign In**: `http://localhost:3001/auth/signin`.
-
----
-
-## Key Features Implemented
-
-- **JWT Authentication**: Secure login and session management across frontend and backend.
-- **AI Document Orchestrator**: Logic to generate legal clauses via LLMs.
-- **Rich Text Editor**: Custom editor with auto-save and document persistence.
-- **Legal Research Integration**: Connected to Indian Kanoon for legal references.
+- **Agentic Drafting Flow**: Powered by **Llama 3.3 (Groq)**, the system drafts documents using professional legal blueprints.
+- **Maharashtra Template Library**: Pre-loaded with 10+ verified proformas for Wills, Sale Deeds, Probate Petitions, and Legal Notices.
+- **Evidence-Grounded Drafting**: Upload PDF/Image evidence (Death Certificates, IDs). The "Senior Associate" Agent extracts facts and auto-fills the blueprints.
+- **Smart Editor**: Markdown-to-HTML rendering with automatic date injection and noise removal for a 100% professional output.
+- **JWT & Session Security**: Long-lived sessions (24h) with secure JWT authentication.
