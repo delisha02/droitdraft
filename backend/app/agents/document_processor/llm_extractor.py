@@ -39,8 +39,8 @@ class LLMExtractor:
         prompt = f"{self.SYSTEM_PROMPT}\n\nDOCUMENT TEXT:\n{text}\n\nEXTRACTED JSON:"
         
         try:
-            # Using Gemini (via the generic generate method)
-            response_text = await llm_client.generate(prompt, use_groq=False)
+            # Using LLM (Groq prioritized)
+            response_text = await llm_client.generate(prompt, use_groq=True)
             # Robust JSON extraction using regex
             import re
             json_match = re.search(r'(\{.*\})', response_text, re.DOTALL)

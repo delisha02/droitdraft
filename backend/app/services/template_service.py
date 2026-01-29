@@ -30,6 +30,18 @@ class TemplateService:
     def get_templates(self, skip: int = 0, limit: int = 100) -> List[Template]:
         return self.db.query(Template).offset(skip).limit(limit).all()
 
+    def get_template_by_type(self, document_type: str) -> Optional[Template]:
+        """
+        Retrieve the latest active template for a specific document type.
+        """
+        return (
+            self.db.query(Template)
+            .filter(Template.document_type == document_type)
+            .filter(Template.is_active == True)
+            .order_by(Template.updated_at.desc())
+            .first()
+        )
+
     def update_template(self, template_id: int, template_in: TemplateUpdate) -> Optional[Template]:
         db_template = self.db.query(Template).filter(Template.id == template_id).first()
         if not db_template:

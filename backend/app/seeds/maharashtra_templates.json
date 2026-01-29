@@ -11,7 +11,7 @@
   {
     "name": "Probate Petition (Bombay High Court)",
     "description": "Petition for grant of Probate of a Will. Based on Bombay High Court (Original Side) Rules and ISA 1925.",
-    "document_type": "probate_petition",
+    "document_type": "probate",
     "jurisdiction": "Maharashtra",
     "version": "1.0",
     "author": "DroitDraft Legal Research",
@@ -20,16 +20,25 @@
   {
     "name": "Letters of Administration (Intestate)",
     "description": "Petition for Letters of Administration when the deceased died intestate. Based on ISA 1925 Sec 218.",
-    "document_type": "loa_petition",
+    "document_type": "letters-of-administration",
     "jurisdiction": "Maharashtra",
     "version": "1.0",
     "author": "DroitDraft Legal Research",
     "content": "Drafting Date: {{ drafting_date }}\n\nIN THE HIGH COURT OF JUDICATURE AT BOMBAY\nTESTAMENTARY AND INTESTATE JURISDICTION\n\nPETITION FOR LETTERS OF ADMINISTRATION\n\nIn the matter of the Estate of {{ deceased_name }}, Deceased.\n\n{{ petitioner_name }} ... Petitioner (Relation: {{ petitioner_relation }})\n\n1. The abovenamed deceased died intestate at {{ place_of_death }} on {{ date_of_death }}.\n2. The legal heirs of the deceased are: {{ list_of_heirs }}.\n3. No Will or other Testamentary disposition has been found.\n4. The Petitioner is the {{ petitioner_relation }} and is entitled to a share in the estate.\n5. The total value of the estate is estimated at Rs. {{ estate_value }}.\n\nPrayer: That Letters of Administration may be granted to the Petitioner.\n\n(Note: Based on High Court of Bombay templates for Intestate Succession.)"
   },
   {
+    "name": "General Contract / Agreement",
+    "description": "Standard legal agreement format for General Contracts in Maharashtra.",
+    "document_type": "contracts",
+    "jurisdiction": "Maharashtra",
+    "version": "1.0",
+    "author": "DroitDraft Legal Research",
+    "content": "Drafting Date: {{ drafting_date }}\n\nAGREEMENT\n\nTHIS AGREEMENT is made at {{ location }} on this {{ date }}\n\nBETWEEN: {{ party_a_name }}, residing at {{ party_a_address }}, hereinafter called 'The First Party'.\n\nAND: {{ party_b_name }}, residing at {{ party_b_address }}, hereinafter called 'The Second Party'.\n\nWHEREAS:\n1. The First Party is {{ party_a_status }}.\n2. The Second Party has agreed to {{ agreement_purpose }}.\n\nTERMS AND CONDITIONS:\n- {{ condition_1 }}\n- {{ condition_2 }}\n\n(Note: Standard general agreement format following the Indian Contract Act, 1872.)"
+  },
+  {
     "name": "Development Agreement (Housing Society)",
     "description": "Agreement for redevelopment between a Housing Society and Developer. Based on MOFA and RERA.",
-    "document_type": "development_agreement",
+    "document_type": "development-agreement",
     "jurisdiction": "Maharashtra",
     "version": "1.0",
     "author": "DroitDraft Legal Research",
@@ -38,7 +47,7 @@
   {
     "name": "Sale Deed (Residential Flat)",
     "description": "Deed of Sale for transfer of ownership of a flat in Maharashtra. Based on Registration Act 1908.",
-    "document_type": "sale_deed",
+    "document_type": "sale-deed",
     "jurisdiction": "Maharashtra",
     "version": "1.0",
     "author": "DroitDraft Legal Research",
@@ -47,7 +56,7 @@
   {
     "name": "Legal Notice (Civil/Property)",
     "description": "Generic Legal Notice for property disputes or recovery of dues. Triage-ready.",
-    "document_type": "legal_notice",
+    "document_type": "notices",
     "jurisdiction": "Maharashtra",
     "version": "1.0",
     "author": "DroitDraft Legal Research",

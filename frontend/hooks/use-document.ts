@@ -108,7 +108,7 @@ export function useDocument(initialDocument?: Document) {
   }, [doc, isSaving]);
 
   const handleGenerateAI = useCallback(
-    async (prompt: string) => {
+    async (prompt: string, fileIds?: string[], templateId?: number) => {
       setIsGenerating(true);
       const token = localStorage.getItem("accessToken");
       if (!token) {
@@ -127,8 +127,8 @@ export function useDocument(initialDocument?: Document) {
               Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({
-              template_id: parseInt(doc.type, 10),
-              case_facts: { prompt },
+              template_id: templateId || parseInt(doc.type, 10) || 1, // Prioritize explicit templateId
+              case_facts: { prompt, file_ids: fileIds || [] },
               title: doc.title,
             }),
           }
@@ -136,10 +136,15 @@ export function useDocument(initialDocument?: Document) {
 
         if (response.ok) {
           const result = await response.json();
-          setDoc(result);
-          return result.content;
+          // The backend returns a schema_document.Document
+          if (result && result.content) {
+            setDoc(result);
+            return result.content;
+          }
+          return null;
         } else {
-          console.error("AI generation failed:", await response.text());
+          const errorMsg = await response.text();
+          console.error("AI generation failed:", errorMsg);
           return null;
         }
       } catch (error) {

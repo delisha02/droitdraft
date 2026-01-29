@@ -36,6 +36,20 @@ def read_templates(
     templates = service.get_templates(skip=skip, limit=limit)
     return templates
 
+@router.get("/type/{document_type}", response_model=Template)
+def read_template_by_type(
+    document_type: str,
+    db: Session = Depends(get_db)
+) -> Any:
+    """
+    Retrieve a specific template by document type.
+    """
+    service = TemplateService(db)
+    template = service.get_template_by_type(document_type)
+    if not template:
+        raise HTTPException(status_code=404, detail=f"No active template found for type: {document_type}")
+    return template
+
 @router.get("/{template_id}", response_model=Template)
 def read_template(
     template_id: int,

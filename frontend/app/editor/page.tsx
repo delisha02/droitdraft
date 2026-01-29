@@ -41,6 +41,7 @@ import {
   Loader2,
   Paperclip,
   Trash2,
+  Scan,
 } from "lucide-react"
 import LinkComponent from "next/link"
 import { useSearchParams, useRouter } from "next/navigation"
@@ -55,7 +56,35 @@ const documentTemplates = {
   "letters-of-administration": "Letters of Administration",
   "sale-deed": "Sale Deed",
   "development-agreement": "Development Agreement",
+  contracts: "General Agreement",
 }
+
+/**
+ * Converts basic Markdown/Plaintext with \n to HTML for the editor
+ */
+const formatToHtml = (text: string): string => {
+  if (!text) return "";
+
+  // 1. Handle Markdown Headers (# Title)
+  let html = text.replace(/^# (.*$)/gm, '<h1 class="text-2xl font-bold mb-4">$1</h1>');
+  html = html.replace(/^## (.*$)/gm, '<h2 class="text-xl font-bold mb-3">$1</h2>');
+  html = html.replace(/^### (.*$)/gm, '<h3 class="text-lg font-bold mb-2">$1</h3>');
+
+  // 2. Handle Bold (**text**)
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+  // 3. Handle Italics (*text*)
+  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+  // 4. Handle Line Breaks (\n)
+  // Double newlines -> Paragraphs
+  html = html.split('\n\n').map(p => {
+    if (p.trim().startsWith('<h')) return p; // Skip already handled headers
+    return `<p class="mb-4">${p.replace(/\n/g, '<br />')}</p>`;
+  }).join('');
+
+  return html;
+};
 
 const fontFamilies = [
   "Times New Roman",
@@ -118,13 +147,21 @@ function EditorContent() {
       const fetchTemplate = async () => {
         const token = localStorage.getItem("accessToken");
         try {
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/templates/${docType}`, {
+          // Determine if docType is a numeric ID or a category name
+          const isId = /^\d+$/.test(docType);
+          const endpoint = isId
+            ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/templates/${docType}`
+            : `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/templates/type/${docType}`;
+
+          const response = await fetch(endpoint, {
             headers: { Authorization: `Bearer ${token}` }
           });
           if (response.ok) {
             const data = await response.json();
             console.log("Template fetched successfully:", data.name);
             setTemplateData(data);
+          } else {
+            console.error("Failed to fetch template:", await response.text());
           }
         } catch (error) {
           console.error("Failed to fetch template", error);
@@ -378,24 +415,35 @@ function EditorContent() {
   }
 
   const handleAiGenerate = async () => {
-    if (!aiPrompt.trim()) return;
+    // We need at least a prompt OR a file to proceed
+    if (!aiPrompt.trim() && uploadedFiles.length === 0) return;
 
-    const generatedContent = await handleAiGenerateFromHook(aiPrompt);
+    // 1. If only files are present (no prompt), it's a "Populate from Evidence" flow
+    if (!aiPrompt.trim() && uploadedFiles.length > 0) {
+      // For now, scan the first file to populate the template
+      await handleScanFacts(uploadedFiles[0].id);
+      return;
+    }
 
-    if (generatedContent && editorRef.current) {
-      // Append the generated content to the editor
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        const newElement = window.document.createElement("div");
-        newElement.innerHTML = generatedContent;
-        range.deleteContents();
-        range.insertNode(newElement);
-      } else {
-        editorRef.current.innerHTML += generatedContent;
+    // 2. Otherwise, it's a Drafting flow (Prompt only OR Prompt + Evidence)
+    const fileIds = uploadedFiles.map(f => f.id);
+    console.log("Starting AI generation with template ID:", templateData?.id);
+
+    try {
+      const generatedContent = await handleAiGenerateFromHook(aiPrompt, fileIds, templateData?.id);
+
+      if (generatedContent && editorRef.current) {
+        // The backend returns the FULL formatted document now.
+        // We should replace the content to ensure consistency.
+        editorRef.current.innerHTML = formatToHtml(generatedContent);
+        updateContentFromEditor();
+        setAiPrompt("");
+      } else if (!generatedContent) {
+        alert("The AI assistant was unable to generate content for this request. Please try a different prompt or check your files.");
       }
-      updateContentFromEditor();
-      setAiPrompt("");
+    } catch (error) {
+      console.error("AI Generation error:", error);
+      alert("A system error occurred during generation. Please check the console for details.");
     }
   }
 
@@ -417,11 +465,12 @@ function EditorContent() {
       console.log("Syncing template to editor:", templateData.name);
       const currentDate = new Date().toLocaleDateString('en-GB'); // DD/MM/YYYY
       const processedContent = templateData.content.replace(/\{\{\s*drafting_date\s*\}\}/g, currentDate);
-      const formattedContent = `<div style="font-family: ${currentFont}; font-size: ${currentFontSize}pt; line-height: ${currentLineHeight}; white-space: pre-wrap;">${processedContent}</div>`;
-      editorRef.current.innerHTML = formattedContent;
+      const finalHtml = formatToHtml(processedContent);
+      editorRef.current.innerHTML = finalHtml;
       updateDocument({
         title: templateData.name,
-        content: formattedContent
+        content: finalHtml,
+        type: docType
       });
       hasSyncedRef.current = true;
     }
@@ -887,29 +936,29 @@ function EditorContent() {
               )}
 
               <Button
-                onClick={uploadedFiles.length > 0 && !aiPrompt.trim() ? () => handleScanFacts(uploadedFiles[0].id) : handleAiGenerate}
+                onClick={handleAiGenerate}
                 className="w-full bg-blue-600 hover:bg-blue-700 h-9"
                 disabled={isGenerating || isUploading || (!!isExtracting) || (!aiPrompt.trim() && uploadedFiles.length === 0)}
               >
                 {isGenerating || isExtracting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    {isGenerating ? "Generating..." : "Extracting Facts..."}
-                  </>
+                  <div className="flex items-center space-x-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>{isGenerating ? "Generating..." : "Extracting Facts..."}</span>
+                  </div>
                 ) : (
-                  <>
+                  <div className="flex items-center space-x-2">
                     {uploadedFiles.length > 0 && !aiPrompt.trim() ? (
                       <>
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        Populate from Evidence
+                        <Scan className="w-4 h-4" />
+                        <span>Populate from Evidence</span>
                       </>
                     ) : (
                       <>
-                        <Bot className="w-4 h-4 mr-2" />
-                        Generate Content
+                        <Sparkles className="w-4 h-4" />
+                        <span>Generate Document</span>
                       </>
                     )}
-                  </>
+                  </div>
                 )}
               </Button>
             </div>
@@ -920,22 +969,22 @@ function EditorContent() {
               <h4 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Quick Suggestions</h4>
               <div className="space-y-1.5">
                 {[
-                  "Add a confidentiality clause",
-                  "Generate payment terms",
-                  "Create liability limitations",
-                  "Add termination conditions",
-                  "Include dispute resolution",
-                  "Add force majeure clause",
+                  "Draft a Probate Petition based on the uploaded Death Certificate and Will",
+                  "Prepare a Legal Notice for recovery of dues using the uploaded invoices",
+                  "Draft a Partition Deed based on the property schedules provided",
+                  "Prepare a Codicil to update executors in the existing Will",
+                  "Generate a reply to a legal notice for breach of contract",
+                  "Advisory: Summarize the key risks in this development agreement",
                 ].map((suggestion, index) => (
                   <Button
                     key={index}
                     variant="ghost"
                     size="sm"
-                    className="w-full justify-start text-xs h-auto py-1.5 px-3 text-left hover:bg-gray-50"
+                    className="w-full justify-start text-xs h-auto py-1.5 px-3 text-left hover:bg-gray-50 group"
                     onClick={() => setAiPrompt(suggestion)}
                   >
-                    <Type className="w-3 h-3 mr-2 flex-shrink-0 text-gray-400" />
-                    {suggestion}
+                    <Type className="w-3 h-3 mr-2 flex-shrink-0 text-gray-400 group-hover:text-blue-500" />
+                    <span className="line-clamp-2">{suggestion}</span>
                   </Button>
                 ))}
               </div>

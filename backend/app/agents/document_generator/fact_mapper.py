@@ -15,7 +15,9 @@ def map_facts_to_template(case_facts: Dict[str, Any], template: str) -> str:
     """
     
     for key, value in case_facts.items():
-        placeholder = f"[{key}]"
-        template = template.replace(placeholder, str(value))
-        
+        # Support multiple placeholder formats
+        placeholders = [f"{{{{ {key} }}}}", f"{{{{{key}}}}}", f"[{key}]"]
+        for p in placeholders:
+            template = template.replace(p, str(value))
+            
     return template
