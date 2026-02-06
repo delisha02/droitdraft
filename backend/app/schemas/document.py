@@ -37,3 +37,13 @@ class DocumentGenerate(BaseModel):
     title: str
     template_id: int
     case_facts: dict
+
+
+class GhostSuggestRequest(BaseModel):
+    current_content: str
+    case_facts: dict
+    doc_type: str | None = None
+
+
+class GhostSuggestResponse(BaseModel):
+    suggestion: str

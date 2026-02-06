@@ -72,13 +72,11 @@ class LLMClient:
             # Try to use a manually specified model if provided
             manual_model = getattr(settings, "GEMINI_MODEL", None)
             
-            # List of models to try in order of preference
+            # List of models to try in order of preference (only valid models)
             pref_models = [
                 'gemini-1.5-flash',
-                'gemini-1.5-flash-latest',
                 'gemini-1.5-pro',
                 'gemini-pro',
-                'gemini-2.0-flash-exp'
             ]
             
             self.candidate_models = []

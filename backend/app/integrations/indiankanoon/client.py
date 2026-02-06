@@ -9,6 +9,8 @@ from app.integrations.indiankanoon.query_builder import IndianKanoonQueryBuilder
 from app.integrations.indiankanoon.response_parser import parse_search_response, parse_doc_response
 from app.integrations.indiankanoon.cache import RedisCache
 
+from app.core.config import settings
+
 # Circuit Breaker configuration
 breaker = CircuitBreaker(fail_max=5, reset_timeout=60)
 
@@ -21,7 +23,7 @@ class IndianKanoonClient:
         rate_limiter: Optional[RateLimiter] = None,
         cache: Optional[RedisCache] = None
     ):
-        self.api_key = api_key or os.environ.get("INDIAN_KANOON_API_KEY")
+        self.api_key = api_key or settings.INDIAN_KANOON_API_KEY
         if not self.api_key:
             raise APIKeyNotFoundError("Indian Kanoon API key not found.")
         
@@ -58,20 +60,20 @@ class IndianKanoonClient:
 
     async def search(self, query_builder: IndianKanoonQueryBuilder, pagenum: int = 0) -> List[Dict[str, Any]]:
         query = query_builder.build()
-        params = {"formInput": query, "pagenum": pagenum}
-        response = await self._request("GET", "/search/", params=params)
+        data = {"formInput": query, "pagenum": pagenum}
+        response = await self._request("POST", "/search/", data=data)
         return parse_search_response(response)
 
     async def doc(self, doc_id: str) -> Dict[str, Any]:
-        response = await self._request("GET", f"/doc/{doc_id}/")
+        response = await self._request("POST", f"/doc/{doc_id}/")
         return parse_doc_response(response)
 
     async def docmeta(self, doc_id: str) -> Dict[str, Any]:
         return await self._request("GET", f"/docmeta/{doc_id}/")
 
     async def docfragment(self, doc_id: str, query: str) -> Dict[str, Any]:
-        params = {"formInput": query}
-        return await self._request("GET", f"/docfragment/{doc_id}/", params=params)
+        data = {"formInput": query}
+        return await self._request("POST", f"/docfragment/{doc_id}/", data=data)
 
     async def close(self):
         await self.client.aclose()

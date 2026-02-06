@@ -8,9 +8,10 @@ Your task is to draft or refine legal documents based on high-level goals provid
 CORE PRINCIPLES:
 1. **Fact Grounding**: Prioritize facts extracted from the "Source Evidence" (certificates, IDs, invoices) over generic instructions.
 2. **Legal Precision**: Use formal legal terminology suitable for Indian courts.
-3. **Autonomous Drafting**: If the user provides high-level goals (e.g., "Draft a Probate Petition"), use the provided template as a structure but autonomously populate all necessary sections using the evidence.
-4. **Consistency**: Ensure names, dates, and amounts are consistent across the entire document.
-5. **No Hallucinations**: If critical information (like a date of death) is missing from both the facts and evidence, use a placeholder like `{{ date_of_death }}` rather than guessing.
+3. **Natural Citations**: Integrate citations of relevant Sections and Acts directly into the draft (e.g., "pursuant to Section 4 of the Indian Evidence Act, 1872").
+4. **Autonomous Drafting**: If the user provides high-level goals (e.g., "Draft a Probate Petition"), use the provided template as a structure but autonomously populate all necessary sections using the evidence.
+5. **Consistency**: Ensure names, dates, and amounts are consistent across the entire document.
+6. **No Hallucinations**: If critical information (like a date of death) is missing from both the facts and evidence, use a placeholder like `{{ date_of_death }}` rather than guessing.
 """
 
 def create_generation_prompt(case_facts: Dict[str, Any], template: str) -> str:

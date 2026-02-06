@@ -32,8 +32,14 @@ class LiveLawScraper:
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
         
-        # This is a generic selector, it might need to be adjusted
-        article_links = soup.select("h2 > a") 
+        # Extremely robust: look for any links with substantial text that aren't navigation
+        article_links = []
+        for a in soup.find_all("a", href=True):
+            text = a.get_text(strip=True)
+            href = a['href']
+            if len(text) > 40 and ("-" in href or "/top-stories/" in href):
+                if href not in [l.get('href') for l in article_links]:
+                    article_links.append(a)
         
         urls = [a["href"] for a in article_links if a.has_attr("href")]
         return list(set(urls)) # Return unique URLs
@@ -48,12 +54,12 @@ class LiveLawScraper:
             print(f"Error scraping {url}: {e}")
             return None
 
-    async def scrape_latest_news(self) -> List[Dict[str, Any]]:
+    async def scrape_latest_news(self, limit: int = 10) -> List[Dict[str, Any]]:
         latest_news_url = f"{self.BASE_URL}/top-stories"
         article_urls = await self._get_article_urls(latest_news_url)
         
         articles = []
-        for url in article_urls:
+        for url in article_urls[:limit]:
             # Ensure the URL is absolute
             if not url.startswith("http"):
                 url = f"{self.BASE_URL}{url}"

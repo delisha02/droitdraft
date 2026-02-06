@@ -5,17 +5,25 @@ from typing import List
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import SentenceTransformerEmbeddings
 
-def get_hybrid_retriever(documents: List[Document]):
-    # Initialize BM25Retriever
-    bm25_retriever = BM25Retriever.from_documents(documents)
 
-    # Initialize your vector store retriever here (e.g., Chroma, FAISS)
+def get_persistent_retriever(persist_directory: str = "chroma_db", collection_name: str = "legal_judgments", k: int = 5):
+    """
+    Returns a retriever connected to the persistent ChromaDB.
+    """
     embeddings = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
-    vectorstore = Chroma.from_documents(documents, embeddings)
-    vector_retriever = vectorstore.as_retriever()
+    
+    # Initialize connection to existing DB
+    # Note: We need to ensure we point to the same directory as DocumentStore
+    import os
+    if not os.path.isabs(persist_directory):
+         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+         persist_directory = os.path.join(base_dir, persist_directory)
 
-    # Initialize EnsembleRetriever
-    ensemble_retriever = EnsembleRetriever(
-        retrievers=[bm25_retriever, vector_retriever], weights=[0.5, 0.5]
+    vectorstore = Chroma(
+        collection_name=collection_name,
+        embedding_function=embeddings,
+        persist_directory=persist_directory
     )
-    return ensemble_retriever
+    
+    return vectorstore.as_retriever(search_kwargs={"k": k})
+

@@ -5,9 +5,10 @@ from sqlalchemy.orm import Session
 from app import crud
 from app.models.models import User # Import User explicitly
 from app.schemas import document as schemas_document
-from app.schemas.document import DocumentGenerate
+from app.schemas.document import DocumentGenerate, GhostSuggestRequest, GhostSuggestResponse
 from app.api import deps
 from app.agents.document_generator.assembly_engine import assembly_engine
+from app.agents.document_generator.ghost_typing import ghost_typing_engine
 from app.integrations.indiankanoon.data_processor import IndianKanoonDataProcessor
 
 router = APIRouter()
@@ -83,6 +84,23 @@ async def generate_document(
     # Save with owner_id using the specialized method
     document = crud.document.create_with_owner(db, obj_in=doc_create, owner_id=current_user.id)
     return document
+
+
+@router.post("/ghost-suggest", response_model=GhostSuggestResponse)
+async def ghost_suggest(
+    *,
+    request: GhostSuggestRequest,
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """
+    Predict the next sentence for the document.
+    """
+    suggestion = await ghost_typing_engine.suggest_next_sentence(
+        current_content=request.current_content,
+        case_facts=request.case_facts,
+        doc_type=request.doc_type
+    )
+    return GhostSuggestResponse(suggestion=suggestion)
 
 
 @router.post("/indiankanoon/process/{doc_id}", response_model=dict)

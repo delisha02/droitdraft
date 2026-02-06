@@ -42,11 +42,84 @@ import {
   Paperclip,
   Trash2,
   Scan,
+  Info,
 } from "lucide-react"
 import LinkComponent from "next/link"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useDocument } from "@/hooks/use-document"
 import { ShareModal } from "@/components/share-modal"
+import * as React from "react"
+import { useGhostTyping } from "@/hooks/use-ghost-typing"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+
+const CITATION_REGEX = /(?:Section|Section|s\.)\s+\d+\s+of\s+[^.,;|\n]+|(?:\*|")[^"*]+\*?"?\s*,\s*(?:\d{4}[:\s])?[A-Z]+\s*(?:[-:\s]\d+)?/gi;
+
+interface CitationLinkProps {
+  text: string;
+  sources: any[];
+}
+
+const CitationLink = ({ text, sources }: CitationLinkProps) => {
+  const source = sources.find(s =>
+    text.toLowerCase().includes(s.title?.toLowerCase()) ||
+    (s.source && text.toLowerCase().includes(s.source.toLowerCase()))
+  );
+
+  if (!source) return <span className="font-medium text-indigo-700">{text}</span>;
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="font-semibold text-blue-700 border-b border-blue-200 cursor-help hover:bg-blue-50 px-0.5 rounded transition-colors">
+            {text}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs p-3">
+          <div className="space-y-1.5">
+            <p className="font-bold text-xs">{source.title}</p>
+            <p className="text-[10px] text-gray-500">{source.source}</p>
+            {source.url && (
+              <a
+                href={source.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] text-blue-600 hover:underline block mt-1"
+              >
+                View full document
+              </a>
+            )}
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
+
+const renderWithCitations = (answer: string, sources: any[]) => {
+  if (!answer) return null;
+
+  const parts = answer.split(CITATION_REGEX);
+  const matches = answer.match(CITATION_REGEX);
+
+  if (!matches) return <p className="whitespace-pre-wrap">{answer}</p>;
+
+  return (
+    <p className="whitespace-pre-wrap">
+      {parts.map((part, i) => (
+        <React.Fragment key={i}>
+          {part}
+          {matches[i] && <CitationLink text={matches[i]} sources={sources} />}
+        </React.Fragment>
+      ))}
+    </p>
+  );
+};
 
 const documentTemplates = {
   // These will serve as fallbacks if the fetch fails
@@ -113,8 +186,18 @@ function EditorContent() {
   const [isUploading, setIsUploading] = useState(false)
   const [isExtracting, setIsExtracting] = useState<string | null>(null)
   const [uploadedFiles, setUploadedFiles] = useState<{ id: string, name: string }[]>([])
+  const [researchQuery, setResearchQuery] = useState("")
+  const [researchResult, setResearchResult] = useState<{ answer: string, sources: any[] } | null>(null)
+  const [isResearching, setIsResearching] = useState(false)
+  const [activeTab, setActiveTab] = useState<"drafting" | "research">("drafting")
   const editorRef = useRef<HTMLDivElement>(null)
+  const typingTimerRef = useRef<any>(null)
   const router = useRouter()
+
+  const { suggestion, fetchSuggestion, clearSuggestion } = useGhostTyping({
+    caseFacts: templateData || {},
+    docType: docType
+  })
 
   useEffect(() => {
     const isAuthenticated = localStorage.getItem("isAuthenticated");
@@ -339,9 +422,73 @@ function EditorContent() {
 
   const updateContentFromEditor = () => {
     if (editorRef.current) {
-      updateDocument({ content: editorRef.current.innerHTML })
+      // Clear any existing ghost spans before saving/updating state
+      const ghostSpan = editorRef.current.querySelector('.ghost-suggestion');
+      if (ghostSpan) ghostSpan.remove();
+
+      const newContent = editorRef.current.innerHTML;
+      updateDocument({ content: newContent })
+
+      // Trigger ghost typing suggestion if tab is active
+      clearSuggestion();
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = setTimeout(() => {
+        const text = editorRef.current?.innerText || "";
+        if (text.length > 20) {
+          fetchSuggestion(text);
+        }
+      }, 1000); // 1s delay
     }
   }
+
+  // Effect to render ghost suggestion
+  useEffect(() => {
+    if (suggestion && editorRef.current) {
+      // Remove old suggestion if any
+      const oldGhost = editorRef.current.querySelector('.ghost-suggestion');
+      if (oldGhost) oldGhost.remove();
+
+      // We only insert at the VERY END of the content for now to keep it simple and safe
+      const ghostSpan = window.document.createElement('span');
+      ghostSpan.className = 'ghost-suggestion text-gray-400 opacity-50 select-none';
+      ghostSpan.setAttribute('contenteditable', 'false');
+      ghostSpan.innerText = suggestion;
+
+      // Appending to the current selection/focus if possible
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        // Only show if cursor is at the end of a node
+        if (range.collapsed) {
+          range.insertNode(ghostSpan);
+        }
+      }
+    }
+  }, [suggestion]);
+
+  const acceptSuggestion = () => {
+    if (!editorRef.current) return;
+    const ghostSpan = editorRef.current.querySelector('.ghost-suggestion');
+    if (ghostSpan) {
+      const text = ghostSpan.textContent || "";
+      ghostSpan.remove();
+
+      // Insert as real text at the current cursor position
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const textNode = window.document.createTextNode(text);
+        range.insertNode(textNode);
+        range.setStartAfter(textNode);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+
+      clearSuggestion();
+      updateContentFromEditor();
+    }
+  };
 
   const handlePrint = () => {
     try {
@@ -447,7 +594,71 @@ function EditorContent() {
     }
   }
 
+  const handleResearchQuery = async () => {
+    if (!researchQuery.trim()) return;
+
+    setIsResearching(true);
+    const token = localStorage.getItem("accessToken");
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/research/query`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          query: researchQuery,
+          limit: 5
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setResearchResult(data);
+      } else {
+        alert("Failed to perform research.");
+      }
+    } catch (error) {
+      console.error("Research error:", error);
+      alert("An error occurred during research.");
+    } finally {
+      setIsResearching(false);
+    }
+  }
+
   const hasSyncedRef = useRef(false);
+
+  const insertToDraft = (content: string) => {
+    if (!editorRef.current) return;
+
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      const div = window.document.createElement("div");
+      div.innerHTML = formatToHtml(content);
+      const frag = window.document.createDocumentFragment();
+      let node, lastNode;
+      while ((node = div.firstChild)) {
+        lastNode = frag.appendChild(node);
+      }
+      range.insertNode(frag);
+
+      // Move cursor after the inserted content
+      if (lastNode) {
+        range.setStartAfter(lastNode);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+
+      updateContentFromEditor();
+    } else {
+      // Fallback: append to end
+      editorRef.current.innerHTML += formatToHtml(content);
+      updateContentFromEditor();
+    }
+  };
 
   // Sync document content to editor
   useEffect(() => {
@@ -875,137 +1086,182 @@ function EditorContent() {
       {/* Main Editor Area */}
       <div className="flex-1 flex">
         {/* AI Assistant Sidebar */}
-        <div className="w-80 bg-white border-r border-gray-200 p-4">
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2 mb-4">
-              <Bot className="w-5 h-5 text-blue-600" />
-              <h3 className="font-semibold text-gray-900">AI Assistant</h3>
-              <Sparkles className="w-4 h-4 text-yellow-500" />
-            </div>
+        <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+          <div className="flex border-b">
+            <button
+              onClick={() => setActiveTab("drafting")}
+              className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === "drafting"
+                ? "text-blue-600 border-b-2 border-blue-600"
+                : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                }`}
+            >
+              Drafting
+            </button>
+            <button
+              onClick={() => setActiveTab("research")}
+              className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === "research"
+                ? "text-blue-600 border-b-2 border-blue-600"
+                : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                }`}
+            >
+              Research
+            </button>
+          </div>
 
-            <div className="space-y-3">
-              <div className="relative border rounded-md focus-within:ring-1 focus-within:ring-blue-500 bg-white">
-                <Textarea
-                  placeholder="Describe what you want to generate or upload evidence to extract facts..."
-                  value={aiPrompt}
-                  onChange={(e) => setAiPrompt(e.target.value)}
-                  className="min-h-[120px] resize-none border-0 focus-visible:ring-0 pr-10"
-                />
-                <div className="absolute bottom-2 right-2 flex items-center space-x-2">
-                  <input
-                    type="file"
-                    id="unified-upload"
-                    className="hidden"
-                    onChange={handleFileUpload}
-                    accept=".pdf,image/*"
-                  />
-                  <label
-                    htmlFor="unified-upload"
-                    className="p-1.5 text-gray-400 hover:text-blue-600 cursor-pointer rounded-md hover:bg-gray-100 transition-colors"
-                    title="Upload source document"
-                  >
-                    <Paperclip className="w-4 h-4" />
-                  </label>
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {activeTab === "drafting" ? (
+              <>
+                <div className="flex items-center space-x-2 mb-4">
+                  <Bot className="w-5 h-5 text-blue-600" />
+                  <h3 className="font-semibold text-gray-900">AI Draftsman</h3>
                 </div>
-              </div>
 
-              {/* Uploaded Files Chips */}
-              {uploadedFiles.length > 0 && (
-                <div className="flex flex-wrap gap-2 py-1">
-                  {uploadedFiles.map((file) => (
-                    <Badge key={file.id} variant="secondary" className="px-2 py-1 flex items-center gap-1.5 bg-blue-50 text-blue-700 border-blue-100">
-                      <FileText className="w-3 h-3" />
-                      <span className="max-w-[120px] truncate text-[10px]">{file.name}</span>
-                      <button
-                        onClick={() => removeFile(file.id)}
-                        className="hover:text-red-600 transition-colors"
-                        title="Remove file"
+                <div className="space-y-3">
+                  <div className="relative border rounded-md focus-within:ring-1 focus-within:ring-blue-500 bg-white">
+                    <Textarea
+                      placeholder="Describe the document or upload evidence..."
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      className="min-h-[120px] resize-none border-0 focus-visible:ring-0 pr-10 text-xs"
+                    />
+                    <div className="absolute bottom-2 right-2 flex items-center space-x-2">
+                      <input
+                        type="file"
+                        id="unified-upload"
+                        className="hidden"
+                        onChange={handleFileUpload}
+                        accept=".pdf,image/*"
+                      />
+                      <label
+                        htmlFor="unified-upload"
+                        className="p-1.5 text-gray-400 hover:text-blue-600 cursor-pointer rounded-md hover:bg-gray-100 transition-colors"
                       >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              )}
-
-              {isUploading && (
-                <div className="flex items-center text-[10px] text-blue-600 px-1 animate-pulse">
-                  <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
-                  Uploading source...
-                </div>
-              )}
-
-              <Button
-                onClick={handleAiGenerate}
-                className="w-full bg-blue-600 hover:bg-blue-700 h-9"
-                disabled={isGenerating || isUploading || (!!isExtracting) || (!aiPrompt.trim() && uploadedFiles.length === 0)}
-              >
-                {isGenerating || isExtracting ? (
-                  <div className="flex items-center space-x-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>{isGenerating ? "Generating..." : "Extracting Facts..."}</span>
+                        <Paperclip className="w-4 h-4" />
+                      </label>
+                    </div>
                   </div>
-                ) : (
-                  <div className="flex items-center space-x-2">
-                    {uploadedFiles.length > 0 && !aiPrompt.trim() ? (
-                      <>
-                        <Scan className="w-4 h-4" />
-                        <span>Populate from Evidence</span>
-                      </>
+
+                  {uploadedFiles.length > 0 && (
+                    <div className="flex flex-wrap gap-2 py-1">
+                      {uploadedFiles.map((file) => (
+                        <Badge key={file.id} variant="secondary" className="px-2 py-1 flex items-center gap-1.5 bg-blue-50 text-blue-700 border-blue-100">
+                          <FileText className="w-3 h-3" />
+                          <span className="max-w-[120px] truncate text-[10px]">{file.name}</span>
+                          <button onClick={() => removeFile(file.id)} className="hover:text-red-600">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+
+                  <Button
+                    onClick={handleAiGenerate}
+                    className="w-full bg-blue-600 hover:bg-blue-700 h-9"
+                    disabled={isGenerating || isUploading || (!!isExtracting) || (!aiPrompt.trim() && uploadedFiles.length === 0)}
+                  >
+                    {isGenerating || isExtracting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      <>
-                        <Sparkles className="w-4 h-4" />
-                        <span>Generate Document</span>
-                      </>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                    )}
+                    {isGenerating ? "Generating..." : isExtracting ? "Extracting..." : "Draft Document"}
+                  </Button>
+                </div>
+
+                <Separator />
+
+                <div>
+                  <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Quick Drafts</h4>
+                  <div className="space-y-1">
+                    {[
+                      "Draft a Probate Petition for Maharashtra High Court",
+                      "Draft a Legal Notice for recovery of dues",
+                    ].map((suggestion, index) => (
+                      <Button
+                        key={index}
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start text-[11px] h-auto py-1.5 px-2 text-left hover:bg-gray-50"
+                        onClick={() => setAiPrompt(suggestion)}
+                      >
+                        <Type className="w-3 h-3 mr-2 flex-shrink-0 text-gray-400" />
+                        <span className="truncate">{suggestion}</span>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center space-x-2 mb-4">
+                  <Scan className="w-5 h-5 text-blue-600" />
+                  <h3 className="font-semibold text-gray-900">Research Sandbox</h3>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="relative border rounded-md focus-within:ring-1 focus-within:ring-blue-500 bg-white">
+                    <Textarea
+                      placeholder="Ask a legal question (e.g., Probate rules in Mumbai)..."
+                      value={researchQuery}
+                      onChange={(e) => setResearchQuery(e.target.value)}
+                      className="min-h-[100px] resize-none border-0 focus-visible:ring-0 text-xs"
+                    />
+                  </div>
+                  <Button
+                    onClick={handleResearchQuery}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 h-9"
+                    disabled={isResearching || !researchQuery.trim()}
+                  >
+                    {isResearching ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <Scale className="w-4 h-4 mr-2" />
+                    )}
+                    {isResearching ? "Researching..." : "Search Legal Base"}
+                  </Button>
+                </div>
+
+                {researchResult && (
+                  <div className="space-y-4 pt-2">
+                    <div className="bg-slate-50 border rounded-p-3 p-3 text-xs leading-relaxed text-gray-700">
+                      {renderWithCitations(researchResult.answer, researchResult.sources)}
+                    </div>
+
+                    {researchResult.sources.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="text-[10px] font-bold text-gray-500 uppercase">Cited Sources</h4>
+                        {researchResult.sources.map((source, i) => (
+                          <div key={i} className="bg-white border rounded p-2 text-[10px] hover:border-blue-300 transition-colors">
+                            <p className="font-semibold text-gray-900 truncate">{source.title}</p>
+                            <p className="text-gray-500">{source.source}</p>
+                            <div className="flex items-center space-x-2 mt-2">
+                              {source.url && (
+                                <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                  View
+                                </a>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-2 text-[10px] text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                                onClick={() => insertToDraft(`**Source: ${source.title}**\n\n${source.source || ""}`)}
+                              >
+                                Insert to Draft
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
                 )}
-              </Button>
-            </div>
 
-            <Separator />
-
-            <div>
-              <h4 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Quick Suggestions</h4>
-              <div className="space-y-1.5">
-                {[
-                  "Draft a Probate Petition based on the uploaded Death Certificate and Will",
-                  "Prepare a Legal Notice for recovery of dues using the uploaded invoices",
-                  "Draft a Partition Deed based on the property schedules provided",
-                  "Prepare a Codicil to update executors in the existing Will",
-                  "Generate a reply to a legal notice for breach of contract",
-                  "Advisory: Summarize the key risks in this development agreement",
-                ].map((suggestion, index) => (
-                  <Button
-                    key={index}
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start text-xs h-auto py-1.5 px-3 text-left hover:bg-gray-50 group"
-                    onClick={() => setAiPrompt(suggestion)}
-                  >
-                    <Type className="w-3 h-3 mr-2 flex-shrink-0 text-gray-400 group-hover:text-blue-500" />
-                    <span className="line-clamp-2">{suggestion}</span>
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <Separator />
-
-            <div>
-              <h4 className="font-medium text-gray-900 mb-3">Clips & Clauses</h4>
-              <div className="space-y-2 p-3 bg-slate-50 border border-slate-100 rounded-md">
-                <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Coming Soon</p>
-                <p className="text-xs text-slate-600">Smart clauses based on Maharashtra laws (MOFA, RERA) will appear here as you draft.</p>
-              </div>
-            </div>
-
-            <div className="mt-6 p-3 bg-blue-50 rounded-lg">
-              <p className="text-xs text-blue-700">
-                <Bot className="w-4 h-4 inline mr-1" />
-                AI integration will be enhanced with advanced legal document generation capabilities.
-              </p>
-            </div>
+                <div className="bg-blue-50 p-3 rounded text-[10px] text-blue-700">
+                  <p>Ground your drafting in live Maharashtra judgments and LiveLaw top stories.</p>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -1025,6 +1281,13 @@ function EditorContent() {
               }}
               onInput={updateContentFromEditor}
               onKeyDown={(e) => {
+                // Handle Tab for Ghost Typing
+                if (e.key === "Tab" && suggestion) {
+                  e.preventDefault();
+                  acceptSuggestion();
+                  return;
+                }
+
                 // Handle keyboard shortcuts
                 if (e.ctrlKey || e.metaKey) {
                   switch (e.key) {
@@ -1047,7 +1310,7 @@ function EditorContent() {
                   }
                 }
               }}
-            />
+            ></div>
           </div>
         </div>
       </div>
@@ -1085,7 +1348,7 @@ function EditorContent() {
         documentId={doc.id || "temp"}
         documentTitle={doc.title}
       />
-    </div>
+    </div >
   )
 }
 
