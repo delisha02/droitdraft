@@ -55,8 +55,30 @@ The project relies on three key Docker services:
 
 ## 🚀 Key Features Implemented
 
-- **Agentic Drafting Flow**: Powered by **Llama 3.3 (Groq)**, the system drafts documents using professional legal blueprints.
-- **Maharashtra Template Library**: Pre-loaded with 10+ verified proformas for Wills, Sale Deeds, Probate Petitions, and Legal Notices.
-- **Evidence-Grounded Drafting**: Upload PDF/Image evidence (Death Certificates, IDs). The "Senior Associate" Agent extracts facts and auto-fills the blueprints.
-- **Smart Editor**: Markdown-to-HTML rendering with automatic date injection and noise removal for a 100% professional output.
+### Phase 1: Knowledge & Extraction
+- **Maharashtra Template Library**: 7 verified proformas for Wills, Sale Deeds, Probate Petitions, and Legal Notices.
+- **Evidence-Grounded Drafting**: Upload PDF/Image evidence (Death Certificates, IDs). The AI extracts facts and auto-fills the templates.
+- **MinIO Storage**: Secure S3-compatible storage for uploaded evidence files.
+
+### Phase 2: Agentic RAG & Research
+- **Legal Research Sandbox**: Interactive sidebar for real-time legal Q&A using RAG.
+- **ChromaDB Vector Store**: 56+ legal documents indexed for research.
+- **Natural Legal Citations**: AI cites Acts and Sections naturally (e.g., "Section 10 of the Indian Contract Act, 1872").
+- **Insert to Draft**: One-click transfer of cited authorities into the editor.
+
+### Phase 3: Advanced UX (Ghost Flow)
+- **Ghost Typing**: AI-powered inline autocomplete that suggests the next legal sentence in gray text.
+- **Tab-to-Accept**: Press `Tab` to accept AI suggestions instantly.
+- **Context-Awareness**: Suggestions adapt based on the current draft and extracted case facts.
+
+### Core Features
+- **Agentic Drafting Flow**: Powered by **Llama 3.3 (Groq)** with Gemini fallback.
+- **Smart Editor**: Markdown-to-HTML rendering with automatic date injection.
 - **JWT & Session Security**: Long-lived sessions (24h) with secure JWT authentication.
+
+---
+
+## 📄 Documentation
+
+- **[PROJECT_STATUS.md](PROJECT_STATUS.md)**: Comprehensive verification guide for all features.
+- **[roadmap.md](roadmap.md)**: Development roadmap and future plans.
