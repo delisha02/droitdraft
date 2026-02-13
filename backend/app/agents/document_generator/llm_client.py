@@ -172,17 +172,10 @@ class LLMClient:
         return "Error: All Gemini model candidates failed."
 
     async def generate(self, prompt: str, use_groq: bool = True) -> str:
-        # Prioritize Groq if available
+        # Use Groq only - no Gemini fallback
         if self.groq_client and use_groq:
-            try:
-                return await self.generate_with_groq(prompt)
-            except Exception as e:
-                print(f"Groq generation failed: {e}. Falling back to Gemini...")
-        
-        # Fallback to Gemini
-        if self.gemini_model:
-            return await self.generate_with_gemini(prompt)
+            return await self.generate_with_groq(prompt)
         else:
-            raise ValueError("No LLM client configured. Please provide a GROQ_API_KEY or GEMINI_API_KEY.")
+            raise ValueError("Groq client not configured. Please provide a valid GROQ_API_KEY.")
 
 llm_client = LLMClient()

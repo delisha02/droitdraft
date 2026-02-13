@@ -73,14 +73,15 @@ To verify file storage:
 - **Result**: Facts (name, date, address) auto-extracted and highlighted in yellow. ✅
 
 
-#### 2. Legal Research & Citations ⚠️ BUG (Needs Fix)
+#### 2. Legal Research & Citations ✅ FIXED
 - **Go to**: Editor -> `Research` tab in the sidebar.
-- **Query**: Search for *"What is the limitation period for a summary suit in Mumbai?"*
-- **Known Issue**: LLM fallback errors when Groq rate-limits. Gemini model list updated but needs further testing.
+- **Query**: Search for *"What is the limitation period for a summary suit?"*
+- **Bug Fixed**: Added HTML sanitization, ASCII encoding, and context size limits to prevent Groq API errors.
 - **Expected Behavior**: 
-  - AI should answer using natural citations (e.g., "Under the Limitation Act...").
+  - AI answers using natural citations (e.g., "Under the Limitation Act...").
   - Hover over any citation to see a tooltip with source details.
   - Click **"Insert to Draft"** to add a source to the editor.
+
 
 #### 3. Ghost Typing (Autocomplete) ✅ WORKING (Can Be Improved)
 - **Go to**: Editor.

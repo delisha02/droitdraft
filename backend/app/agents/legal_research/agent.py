@@ -1,4 +1,6 @@
 import logging
+import re
+from html import unescape
 from typing import List, Dict, Any, Optional
 
 from app.agents.legal_research.document_store import DocumentStore
@@ -33,25 +35,56 @@ class LegalResearchAgent:
                     "sources": []
                 }
 
-            # 2. Construct Context
+            # 2. Construct Context with dynamic sizing
+            # Groq's Llama 3.3 has 128K token context (~512K chars)
+            # We use ~80K chars to leave room for prompt + response
+            MAX_CONTEXT_CHARS = 80000
+            MAX_CHARS_PER_DOC = 4000  # Allow substantial content per doc
+            
             context_parts = []
             sources = []
+            total_chars = 0
+            
             for i, doc in enumerate(docs[:k]):
-                content = doc.page_content
+                # Sanitize HTML content from ChromaDB documents
+                raw_content = doc.page_content
+                # Remove HTML tags
+                content = re.sub(r'<[^>]+>', ' ', raw_content)
+                # Unescape HTML entities
+                content = unescape(content)
+                # Collapse multiple spaces/newlines
+                content = re.sub(r'\s+', ' ', content).strip()
+                # Remove non-ASCII chars that cause Groq API errors
+                content = content.encode('ascii', errors='ignore').decode('ascii')
+                
+                # Calculate how much space we have left
+                remaining = MAX_CONTEXT_CHARS - total_chars
+                if remaining <= 500:  # Stop if not enough room
+                    break
+                    
+                # Truncate this doc to fit (but max 4000 chars per doc)
+                allowed = min(MAX_CHARS_PER_DOC, remaining - 200)  # Leave room for header
+                content = content[:allowed]
+                
                 metadata = doc.metadata
                 source_info = f"Source {i+1}: {metadata.get('title', 'Unknown Title')} (Source: {metadata.get('source', 'Unknown')})"
                 if metadata.get('url'):
                     source_info += f" - {metadata.get('url')}"
                 
-                context_parts.append(f"--- {source_info} ---\n{content}\n")
+                doc_text = f"--- {source_info} ---\n{content}\n"
+                context_parts.append(doc_text)
+                total_chars += len(doc_text)
+                
                 sources.append({
                     "title": metadata.get('title'),
                     "url": metadata.get('url'),
                     "source": metadata.get('source'),
                     "id": metadata.get('doc_id') or metadata.get('tid')
                 })
-
+            
+            logger.info(f"Research context: {len(sources)} docs, {total_chars} chars")
             context_str = "\n".join(context_parts)
+
 
             # 3. Generate Answer
             prompt = f"""
