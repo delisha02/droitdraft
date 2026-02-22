@@ -12,6 +12,7 @@ dd/
 .venv/
 
 prompts/
+
 # IDEs
 .vscode/
 .idea/
@@ -29,3 +30,14 @@ yarn-error.log
 # OS
 .DS_Store
 Thumbs.db
+
+# Databases & Vector Stores (Runtime Data)
+backend/chroma_db/
+*.sqlite3
+backend/uploads/
+backend/processed/
+
+# Temp Samples
+backend/scripts/*_sample.txt
+tp_sample.txt
+bns_sample.txt

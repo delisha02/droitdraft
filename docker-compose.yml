@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: ${DB_USER:-droitdraft_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-droitdraft_pass}
+      POSTGRES_DB: ${DB_NAME:-droitdraft_dev}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  minio:
+    image: minio/minio
+    container_name: minio_storage
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+
+  chroma:
+    image: chromadb/chroma
+    container_name: chroma_db
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma_data:/index_data
+    environment:
+      - ALLOW_RESET=TRUE
+      - PERSIST_DIRECTORY=/index_data
+
+  backend:
+    build: ./backend
+    container_name: droitdraft_backend
+    ports:
+      - "8002:8002"
+    depends_on:
+      - postgres
+      - minio
+      - chroma
+    env_file: ./backend/.env
+    environment:
+      - DB_HOST=postgres
+      - MINIO_ENDPOINT=minio:9000
+      - CHROMA_HOST=chroma
+
+  frontend:
+    build: ./frontend
+    container_name: droitdraft_frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8002
+
+volumes:
+  postgres_data:
+  minio_data:
+  chroma_data:

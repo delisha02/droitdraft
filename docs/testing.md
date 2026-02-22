@@ -60,3 +60,19 @@ The testing strategy for DroitDraft focuses on validating the accuracy of legal 
 | **TC-18** | **Draft Generation Speed** | Generate "Will" (5 pages) | Completed in < 10 seconds. | Pass |
 | **TC-19** | **Search Latency** | Complex Query (Hybrid Search) | Results retrieved in < 3 seconds. | Pass |
 | **TC-20** | **Concurrent Load** | 50 Users Drafting simultaneously | Server CPU < 80%, No dropped connections. | Pass |
+## 7.3 Automated Status Verification
+
+For a quick check of the system's core components (PostgreSQL, ChromaDB, and Legal Research Agent), use the provided verification script.
+
+### 7.3.1 Running the Verification Script
+
+1. Open a terminal in the project root.
+2. Run the following command:
+   ```powershell
+   .\.venv\Scripts\python.exe verify_project_status.py
+   ```
+
+### 7.3.2 What it verifies:
+- **PostgreSQL**: Integrity of User, Template, and Document counts.
+- **ChromaDB**: Total number of legal documents indexed for RAG.
+- **Legal Research Agent**: End-to-end test of query processing, context retrieval from ChromaDB, and LLM (Groq) answer generation.
