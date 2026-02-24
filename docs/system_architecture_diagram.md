@@ -2,7 +2,101 @@
 
 This document provides a highly detailed architecture view of DroitDraft, including runtime request flow, asynchronous processing, and legal data ingestion/research pipelines.
 
-## 1) End-to-End Platform Architecture
+## 1) Structured System Block Diagram 
+
+```mermaid
+flowchart TB
+    %% Clients
+    User[End User / Lawyer]
+    APIClient[External API Client]
+
+    %% Application
+    subgraph APP[Application Tier]
+        FE[Frontend\nNext.js Pages + Components + Hooks]
+        NextAPI[Next API Routes / Server Actions]
+        BE[Backend API\nFastAPI v1 Endpoints]
+        Orch[Workflow Orchestrator\nAgent graph + state management]
+        Agents[AI Agent Layer\nDocument Processor + Legal Research + Document Generator]
+        Services[Core Services\nLLM, Storage, Template, Validator, Indexer, Ingestion]
+    end
+
+    %% Async + Data
+    subgraph PLATFORM[Platform & Data Tier]
+        Queue[Async Processing\nCelery Workers + Redis Broker]
+        PG[(PostgreSQL)]
+        CH[(ChromaDB)]
+        MO[(MinIO)]
+    end
+
+    %% External
+    subgraph EXT[External Providers]
+        IK[IndianKanoon]
+        LL[LiveLaw]
+        Groq[Groq API]
+        Gemini[Gemini API]
+    end
+
+    %% Interaction edges (explicit)
+    User --> FE
+    User --> NextAPI
+    APIClient --> BE
+
+    FE --> NextAPI
+    FE --> BE
+    NextAPI --> BE
+
+    BE --> Orch
+    BE --> Services
+    BE --> Queue
+
+    Orch --> Agents
+    Orch --> Services
+
+    Agents --> Services
+    Services --> Agents
+
+    Queue --> Agents
+    Queue --> Services
+
+    BE --> PG
+    BE --> CH
+    BE --> MO
+
+    Agents --> PG
+    Agents --> CH
+    Agents --> MO
+
+    Services --> PG
+    Services --> CH
+    Services --> MO
+
+    Services --> IK
+    Services --> LL
+    IK --> Services
+    LL --> Services
+
+    Services --> Groq
+    Services --> Gemini
+    Agents --> Groq
+    Agents --> Gemini
+```
+
+### 1.1 Interaction Explanation
+
+- **User/API ingress**: Lawyers use the frontend UI, while automation can call backend endpoints directly via REST.
+- **Frontend-to-backend flow**: Frontend pages and Next API routes/server actions both invoke FastAPI endpoints for auth, upload, research, and document operations.
+- **Backend coordination**: FastAPI endpoints delegate orchestration to the workflow engine and feature-specific responsibilities to core services.
+- **Orchestration and agent execution**: The orchestrator sequences document-processing, legal-research, and document-generation agents, including state transitions and dependency ordering.
+- **Service-agent collaboration**: Agents and core services interact bidirectionally for shared capabilities (LLM calls, storage access, indexing, validation, and template handling).
+- **Async execution path**: Long-running workloads are pushed to Celery/Redis, where workers execute agent/service tasks outside request-response latency constraints.
+- **Persistence interactions**:
+  - PostgreSQL stores transactional/stateful records (users, templates, jobs, metadata, draft states).
+  - ChromaDB stores embeddings and retrieval indexes used by research and drafting assistance.
+  - MinIO stores uploaded evidence and raw/processed artifacts.
+- **External legal data ingestion**: Ingestion services call IndianKanoon and LiveLaw sources, then normalize, deduplicate, and route usable content into platform stores.
+- **LLM provider interaction**: Both services and agent modules invoke Groq (primary) and Gemini (fallback/alternate path) depending on task and availability.
+
+## 2) End-to-End Platform Architecture
 
 ```mermaid
 graph TB
@@ -226,7 +320,7 @@ graph TB
     GhostTyping --> Groq
 ```
 
-## 2) Primary Runtime Sequence (Drafting + Research)
+## 3) Primary Runtime Sequence (Drafting + Research)
 
 ```mermaid
 sequenceDiagram
@@ -265,7 +359,7 @@ sequenceDiagram
     FE-->>U: Render editor with generated output
 ```
 
-## 3) Ingestion & Indexing Pipeline (Legal Corpus)
+## 4) Ingestion & Indexing Pipeline (Legal Corpus)
 
 ```mermaid
 flowchart LR
@@ -281,7 +375,7 @@ flowchart LR
     INDEX --> RETRIEVE[Retriever layer used by research agent]
 ```
 
-## 4) Notes
+## 5) Notes
 
 - The architecture intentionally separates synchronous API paths from long-running and compute-heavy tasks via Celery/Redis workers.
 - The legal-research subsystem is coupled to ChromaDB for retrieval, while relational records and workflow state are persisted in PostgreSQL.
