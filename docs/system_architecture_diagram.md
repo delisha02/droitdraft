@@ -2,7 +2,7 @@
 
 This document provides a highly detailed architecture view of DroitDraft, including runtime request flow, asynchronous processing, and legal data ingestion/research pipelines.
 
-## 1) Structured System Block Diagram (Condensed + Detailed)
+## 1) Structured System Block Diagram 
 
 ```mermaid
 flowchart TB
