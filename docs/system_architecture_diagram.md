@@ -2,7 +2,7 @@
 
 This document provides a highly detailed architecture view of DroitDraft, including runtime request flow, asynchronous processing, and legal data ingestion/research pipelines.
 
-## 1) Structured System Block Diagram 
+## 1) Structured System Block Diagram (Condensed + Detailed)
 
 ```mermaid
 flowchart TB
@@ -16,7 +16,13 @@ flowchart TB
         NextAPI[Next API Routes / Server Actions]
         BE[Backend API\nFastAPI v1 Endpoints]
         Orch[Workflow Orchestrator\nAgent graph + state management]
-        Agents[AI Agent Layer\nDocument Processor + Legal Research + Document Generator]
+
+        subgraph AGENTS[AI Agent Layer]
+            DocProc[Document Processor Agent]
+            LegalRes[Legal Research Agent]
+            DocGen[Document Generator Agent]
+        end
+
         Services[Core Services\nLLM, Storage, Template, Validator, Indexer, Ingestion]
     end
 
@@ -33,7 +39,6 @@ flowchart TB
         IK[IndianKanoon]
         LL[LiveLaw]
         Groq[Groq API]
-        Gemini[Gemini API]
     end
 
     %% Interaction edges (explicit)
@@ -49,22 +54,31 @@ flowchart TB
     BE --> Services
     BE --> Queue
 
-    Orch --> Agents
+    Orch --> DocProc
+    Orch --> LegalRes
+    Orch --> DocGen
     Orch --> Services
 
-    Agents --> Services
-    Services --> Agents
+    DocProc --> Services
+    LegalRes --> Services
+    DocGen --> Services
 
-    Queue --> Agents
+    Queue --> DocProc
+    Queue --> LegalRes
+    Queue --> DocGen
     Queue --> Services
 
     BE --> PG
     BE --> CH
     BE --> MO
 
-    Agents --> PG
-    Agents --> CH
-    Agents --> MO
+    DocProc --> PG
+    DocProc --> MO
+
+    LegalRes --> CH
+    LegalRes --> PG
+
+    DocGen --> PG
 
     Services --> PG
     Services --> CH
@@ -76,9 +90,9 @@ flowchart TB
     LL --> Services
 
     Services --> Groq
-    Services --> Gemini
-    Agents --> Groq
-    Agents --> Gemini
+    DocProc --> Groq
+    LegalRes --> Groq
+    DocGen --> Groq
 ```
 
 ### 1.1 Interaction Explanation
@@ -94,7 +108,7 @@ flowchart TB
   - ChromaDB stores embeddings and retrieval indexes used by research and drafting assistance.
   - MinIO stores uploaded evidence and raw/processed artifacts.
 - **External legal data ingestion**: Ingestion services call IndianKanoon and LiveLaw sources, then normalize, deduplicate, and route usable content into platform stores.
-- **LLM provider interaction**: Both services and agent modules invoke Groq (primary) and Gemini (fallback/alternate path) depending on task and availability.
+- **LLM provider interaction**: Services and agent modules invoke Groq for drafting, extraction, and synthesis tasks.
 
 ## 2) End-to-End Platform Architecture
 
