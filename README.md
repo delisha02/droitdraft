@@ -82,3 +82,4 @@ The project relies on three key Docker services:
 
 - **[PROJECT_STATUS.md](PROJECT_STATUS.md)**: Comprehensive verification guide for all features.
 - **[roadmap.md](roadmap.md)**: Development roadmap and future plans.
+- **[docs/system_architecture_diagram.md](docs/system_architecture_diagram.md)**: Highly detailed architecture diagrams (platform, runtime sequence, and ingestion pipeline).
