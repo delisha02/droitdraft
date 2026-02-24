@@ -42,7 +42,7 @@ graph TD
     Worker -->|OCR/Scraping| ExtServices[External APIs]
     end
     
-    Backend <-->|Inference| LLM_API[LLM Provider (Groq)]
+    Backend <-->|Inference| LLMAPI[LLM Provider - Groq]
 ```
 
 ## 5.2 Models Explored
