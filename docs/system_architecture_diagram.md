@@ -6,15 +6,22 @@ This document provides a highly detailed architecture view of DroitDraft, includ
 
 ```mermaid
 flowchart LR
-    %% Client Layer
-    User["End User or Lawyer\nOutput: Case facts and drafting intent"]
-    APIClient["External API Client\nOutput: Structured API request"]
-
-    %% Application Tier
-    subgraph APP["Application Tier"]
+    %% Ingress Lane (center-aligned before orchestrator)
+    subgraph INGRESS["Ingress and Request Processing"]
+        direction TB
+        User["End User or Lawyer\nOutput: Case facts and drafting intent"]
+        APIClient["External API Client\nOutput: Structured API request"]
         FE["Frontend\nInput: User actions/files\nOutput: Validated UI payload"]
         Gateway["API Gateway\nInput: HTTP request + JWT\nOutput: Authorized routed request"]
         BE["Backend API\nInput: Authorized request\nOutput: Workflow command + response"]
+
+        User --> FE
+        FE --> Gateway --> BE
+        APIClient --> BE
+    end
+
+    %% Application Tier
+    subgraph APP["Application Tier"]
         Orch["Workflow Orchestrator (State Machine and DAG Scheduling)\nInput: Workflow command\nOutput: Ordered agent tasks"]
 
         subgraph AGENTS["AI Agent Layer"]
@@ -39,9 +46,6 @@ flowchart LR
         LL["LiveLaw\nInput: Crawl/query request\nOutput: Legal news/judgment content"]
         Groq["Groq API\nInput: Prompt + context\nOutput: LLM completion"]
     end
-
-    User --> FE --> Gateway --> BE
-    APIClient --> BE
 
     BE --> Orch
     Orch --> DocProc
