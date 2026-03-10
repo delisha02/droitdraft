@@ -7,38 +7,38 @@ This document provides a highly detailed architecture view of DroitDraft, includ
 ```mermaid
 flowchart LR
     %% Client Layer
-    User[End User / Lawyer]
-    APIClient[External API Client]
+    User["End User / Lawyer"]
+    APIClient["External API Client"]
 
     %% Application Tier
-    subgraph APP[Application Tier]
-        FE[Frontend (Component Rendering)]
-        Gateway[API Gateway (Routing + JWT Validation)]
-        BE[Backend API (REST Validation + Business Rules)]
-        Orch[Workflow Orchestrator (State Machine + DAG Scheduling)]
+    subgraph APP["Application Tier"]
+        FE["Frontend (Component Rendering)"]
+        Gateway["API Gateway (Routing and JWT Validation)"]
+        BE["Backend API (REST Validation and Business Rules)"]
+        Orch["Workflow Orchestrator (State Machine and DAG Scheduling)"]
 
-        subgraph AGENTS[AI Agent Layer]
-            DocProc[Document Processor (OCR + NER + Entity Resolution)]
-            LegalRes[Legal Research (RAG Retrieval + Re-ranking)]
-            DocGen[Document Generator (Template Filling + Consistency Check)]
+        subgraph AGENTS["AI Agent Layer"]
+            DocProc["Document Processor (OCR and NER and Entity Resolution)"]
+            LegalRes["Legal Research (RAG Retrieval and Re-ranking)"]
+            DocGen["Document Generator (Template Filling and Consistency Check)"]
         end
 
-        Services[Core Services (Embedding + Indexing + Rule Validation)]
+        Services["Core Services (Embedding and Indexing and Rule Validation)"]
     end
 
-    %% Platform & Data
-    subgraph PLATFORM[Platform & Data Tier]
-        Queue[Async Queue (Celery Task Scheduling)]
-        PG[(PostgreSQL (Relational Query Planning))]
-        CH[(ChromaDB (Vector Similarity Search))]
-        MO[(MinIO (Object Storage Indexing))]
+    %% Platform and Data
+    subgraph PLATFORM["Platform and Data Tier"]
+        Queue["Async Queue (Celery Task Scheduling)"]
+        PG[("PostgreSQL (Relational Query Planning)")]
+        CH[("ChromaDB (Vector Similarity Search)")]
+        MO[("MinIO (Object Storage Indexing)")]
     end
 
     %% External Providers
-    subgraph EXT[External Providers]
-        IK[IndianKanoon (Search + Parsing)]
-        LL[LiveLaw (Scraping + Deduplication)]
-        Groq[Groq API (LLM Inference)]
+    subgraph EXT["External Providers"]
+        IK["IndianKanoon (Search and Parsing)"]
+        LL["LiveLaw (Scraping and Deduplication)"]
+        Groq["Groq API (LLM Inference)"]
     end
 
     User --> FE --> Gateway --> BE
