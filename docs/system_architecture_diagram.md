@@ -6,70 +6,32 @@ This document provides a highly detailed architecture view of DroitDraft, includ
 
 ```mermaid
 flowchart LR
-    %% Ingress Lane (center-aligned before orchestrator)
-    subgraph INGRESS["Ingress and Request Processing"]
-        direction TB
-        User["End User or Lawyer\nOutput: Case facts and drafting intent"]
-        APIClient["External API Client\nOutput: Structured API request"]
-        FE["Frontend\nInput: User actions/files\nOutput: Validated UI payload"]
-        Gateway["API Gateway\nInput: HTTP request + JWT\nOutput: Authorized routed request"]
-        BE["Backend API\nInput: Authorized request\nOutput: Workflow command + response"]
+    User["End User / Lawyer"] --> FE["Frontend (Next.js UI)"]
+    APIClient["External API Client"] --> GW
 
-        User --> FE
-        FE --> Gateway --> BE
-        APIClient --> BE
-    end
+    FE --> GW["API Gateway\nResponsibility: Auth, rate-limit, request routing"]
+    GW --> BE["Backend API\nResponsibility: Business logic, orchestration, response shaping"]
 
-    %% Application Tier
-    subgraph APP["Application Tier"]
-        Orch["Workflow Orchestrator (State Machine and DAG Scheduling)\nInput: Workflow command\nOutput: Ordered agent tasks"]
+    BE --> Orch["Workflow Orchestrator"]
+    Orch --> DocProc["Document Processing Agent"]
+    Orch --> LegalRes["Legal Research Agent"]
+    Orch --> DocGen["Document Generation Agent"]
 
-        subgraph AGENTS["AI Agent Layer"]
-            DocProc["Document Processor (Generative Extraction + One-Shot Prompting)\nInput: OCR text/document\nOutput: Structured facts JSON"]
-            LegalRes["Legal Research (Hybrid Search + BM25 + Cosine Similarity + RRF)\nInput: Legal query + facts\nOutput: Ranked legal context"]
-            DocGen["Document Generator (Retrieval-Augmented Generation)\nInput: Facts + retrieved context\nOutput: Draft legal sections"]
-        end
-
-        Services["Core Services (Recursive Character Text Splitting + Sentence-BERT Embeddings)\nInput: Raw legal text/query\nOutput: Chunks + vectors + validated templates"]
-    end
-
-    %% Platform and Data
-    subgraph PLATFORM["Platform and Data Tier"]
-        PG[("PostgreSQL\nInput: Jobs/templates/metadata\nOutput: Transactional records")]
-        CH[("ChromaDB\nInput: Embedding vectors\nOutput: Top-k semantic matches")]
-        MO[("MinIO\nInput: Uploaded/source files\nOutput: Stored artifacts")]
-    end
-
-    %% External Providers
-    subgraph EXT["External Providers"]
-        IK["IndianKanoon\nInput: Legal search request\nOutput: Case-law results"]
-        LL["LiveLaw\nInput: Crawl/query request\nOutput: Legal news/judgment content"]
-        Groq["Groq API\nInput: Prompt + context\nOutput: LLM completion"]
-    end
-
-    BE --> Orch
-    Orch --> DocProc
-    Orch --> LegalRes
-    Orch --> DocGen
-
-    BE --> Services
-    DocProc --> Services
+    DocProc --> Services["Core Services\nEmbedding ownership: Recursive Text Splitting + Sentence-BERT"]
     LegalRes --> Services
     DocGen --> Services
 
+    %% Backend-mediated storage access only
+    BE --> PG[("PostgreSQL")]
+    BE --> CH[("ChromaDB")]
+    BE --> MO[("MinIO")]
     Services --> PG
     Services --> CH
     Services --> MO
-    DocProc --> MO
-    LegalRes --> CH
-    DocGen --> PG
 
-    Services --> IK
-    Services --> LL
-    Services --> Groq
-    DocProc --> Groq
-    LegalRes --> Groq
-    DocGen --> Groq
+    Services --> IK["IndianKanoon"]
+    Services --> LL["LiveLaw"]
+    Services --> Groq["Groq API"]
 ```
 
 ### 1.1 Interaction Explanation
