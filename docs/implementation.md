@@ -35,153 +35,265 @@ Instead of traditional CRF-based Named Entity Recognition (like Spacy), we use *
 
 ## 6.2 Algorithm Walkthrough on One Example Query (Single Slide Narrative)
 
-Goal: show how one user query is transformed step-by-step by the exact algorithms used in this project.
+Goal: Show, step-by-step, how a user query is transformed at every stage of the DroitDraft pipeline, with concrete intermediate values and outputs.
 
-**Example query used across all steps**
+**Example Query:**
 
 > "Draft a legal notice under Section 138 NI Act for cheque bounce. Cheque amount is ₹2,50,000, cheque date is 05 Jan 2025, return memo reason is 'insufficient funds'."
 
-### Step 1: Algorithm: Generative Extraction + One-Shot Prompting | Process: Fact Structuring
+---
 
-```mermaid
-flowchart LR
-    Q["Input Query
-Section 138 cheque bounce, ₹2,50,000, insufficient funds"] --> EX["Generative Extraction
-+ One-Shot Prompting"]
-    EX --> F["Output Facts JSON
-statute=Sec138, amount=250000, reason=insufficient_funds"]
+
+### Step 1: Fact Extraction (Generative Extraction + One-Shot Prompting)
+
+**Input:**
+```
+Draft a legal notice under Section 138 NI Act for cheque bounce. Cheque amount is ₹2,50,000, cheque date is 05 Jan 2025, return memo reason is 'insufficient funds'.
 ```
 
-- Input query text is transformed into strict schema fields (statute, amount, cheque_date, dishonour_reason, task).
-- One-shot prompting reduces format drift by making the model emit normalized legal keys instead of free prose.
+**Transformation:**
+The query is passed to Llama 3 with a one-shot prompt and a strict JSON schema.
 
-### Step 2: Algorithm: Recursive Character Text Splitting | Process: Query-Relevant Passage Chunking
-
+**Diagram:**
 ```mermaid
 flowchart LR
-    P["Input Passage (relevant to query)
-Section 138 NI Act... cheque returned unpaid due to insufficient funds... pay within 15 days..."] --> CH["Recursive Character Text Splitting
-L=1000, overlap=200"]
-    CH --> C1["Chunk 1
-...Section 138...cheque returned unpaid..."]
-    CH --> C2["Chunk 2 (overlap)
-...returned unpaid...insufficient funds...15 days..."]
+        Q["User Query"] --> |"LLM + One-Shot Prompt"| FJ["Extracted Facts JSON"]
 ```
 
-- Long legal text is transformed into overlapping chunks so query-critical terms survive split boundaries.
-- For this query, phrases like "Section 138", "insufficient funds", and "15 days" remain retrievable across adjacent chunks.
+**Output (Extracted Facts JSON):**
+```json
+{
+    "statute": "Section 138 NI Act",
+    "amount": 250000,
+    "cheque_date": "2025-01-05",
+    "dishonour_reason": "insufficient funds",
+    "task": "draft_legal_notice"
+}
+```
 
-**Equation / rule used**
+---
 
+
+### Step 2: Passage Chunking (Recursive Character Text Splitting)
+
+**Input:**
+Relevant legal text (e.g., Section 138 NI Act):
+```
+Section 138. Dishonour of cheque for insufficiency, etc., of funds in the account... payee may make a demand for the payment... within 15 days of receiving information... etc.
+```
+
+**Transformation:**
+Split into overlapping chunks (L=1000, overlap=200):
+
+**Equation:**
 $$ s_i = i \cdot (L - o),\; L=1000,\; o=200 $$
 
-### Step 3: Algorithm: Sentence-BERT (all-MiniLM-L6-v2) | Process: Dense Vectorization
-
+**Diagram:**
 ```mermaid
 flowchart LR
-    QF["Input Query/Facts Text
-'Section 138 cheque bounce insufficient funds'"] --> EMBQ["Sentence-BERT"]
-    C["Input Chunks (from Step 2)"] --> EMBD["Sentence-BERT"]
-    EMBQ --> VQ["Query Vector q ∈ R^384"]
-    EMBD --> VD["Chunk Vectors d ∈ R^384"]
+    P["Legal Passage"] --> |"Chunking"| C1["Chunk 1"]
+    P --> |"Chunking (overlap)"| C2["Chunk 2"]
 ```
 
-- Query/facts and chunks are transformed into vectors in the same 384-dimensional semantic space.
-- This enables semantic matching even when exact legal wording differs.
+**Output (Chunks):**
+```
+Chunk 1: "Section 138. Dishonour of cheque for insufficiency... payee may make a demand..."
+Chunk 2: "...may make a demand for the payment... within 15 days of receiving information..."
+```
 
-### Step 4: Algorithm: Cosine Similarity | Process: Dense Retrieval Scoring
+---
 
+
+### Step 3: Dense Vectorization (Sentence-BERT)
+
+**Input:**
+- Query facts text: "Section 138 cheque bounce insufficient funds"
+- Chunks from Step 2
+
+**Transformation:**
+Encode both query and chunks into 384-dimensional vectors.
+
+**Diagram:**
 ```mermaid
 flowchart LR
-    VQ["Query Vector"] --> COS["Cosine Similarity"]
-    VD["Chunk Vectors"] --> COS
-    COS --> DR["Dense Ranked List
-D5 > D3 > D2"]
+    QF["Facts Text"] --> |"Sentence-BERT"| VQ["Query Vector (q)"]
+    C1["Chunk 1"] --> |"Sentence-BERT"| VD1["Chunk Vector (d₁)"]
+    C2["Chunk 2"] --> |"Sentence-BERT"| VD2["Chunk Vector (d₂)"]
 ```
 
-- Vector pairs $(\mathbf{q},\mathbf{d})$ are transformed into semantic similarity scores per chunk.
-- Example behavior: a chunk containing "dishonoured cheque" can rank high for query phrase "cheque bounce".
+**Output:**
+```
+Query vector q ∈ ℝ³⁸⁴
+Chunk vectors d₁, d₂ ∈ ℝ³⁸⁴
+```
 
-**Equation used**
+---
 
+
+### Step 4: Dense Retrieval Scoring (Cosine Similarity)
+
+**Input:**
+- Query vector q
+- Chunk vectors d₁, d₂
+
+**Transformation:**
+Compute cosine similarity between q and each dᵢ.
+
+**Equation:**
 $$
 \mathrm{cos\_sim}(\mathbf{q},\mathbf{d}) =
 \frac{\mathbf{q} \cdot \mathbf{d}}{\|\mathbf{q}\|\,\|\mathbf{d}\|}
 $$
 
-### Step 5: Algorithm: BM25 | Process: Sparse Lexical Retrieval Scoring
-
+**Diagram:**
 ```mermaid
 flowchart LR
-    TQ["Tokenized Query
-['section','138','ni','act','cheque','bounce']"] --> BM["BM25"]
-    TD["Tokenized Chunks"] --> BM
-    BM --> SR["Sparse Ranked List
-D2 > D5 > D1"]
+    VQ["Query Vector (q)"] --> |"Cosine Similarity"| S1["Score 1"]
+    VD1["Chunk Vector (d₁)"] --> S1
+    VQ --> |"Cosine Similarity"| S2["Score 2"]
+    VD2["Chunk Vector (d₂)"] --> S2
 ```
 
-- Token overlap and term statistics transform query/chunk tokens into lexical relevance scores.
-- BM25 strongly boosts exact legal tokens such as "Section 138" and "NI Act".
+**Output (Sample Scores):**
+```
+cos_sim(q, d₁) = 0.82
+cos_sim(q, d₂) = 0.77
+```
+**Dense Ranked List:**
+1. Chunk 1 (0.82)
+2. Chunk 2 (0.77)
 
-**Equation used**
+---
 
+
+### Step 5: Sparse Lexical Retrieval (BM25)
+
+**Input:**
+- Tokenized query: ["section", "138", "ni", "act", "cheque", "bounce"]
+- Tokenized chunks
+
+**Transformation:**
+BM25 scores based on token overlap and term statistics.
+
+**Equation:**
 $$
 \mathrm{BM25}(q,d)=\sum_{t\in q}\mathrm{IDF}(t)\cdot
 \frac{f(t,d)(k_1+1)}{f(t,d)+k_1\left(1-b+b\frac{|d|}{\mathrm{avgdl}}\right)}
 $$
 
-### Step 6: Algorithm: Reciprocal Rank Fusion (RRF) | Process: Hybrid Rank Merge
-
+**Diagram:**
 ```mermaid
 flowchart LR
-    DR["Dense Ranked List
-D5 > D3 > D2"] --> RRF["Reciprocal Rank Fusion"]
-    SR["Sparse Ranked List
-D2 > D5 > D1"] --> RRF
-    RRF --> CTX["Output Context Rank
-D5 > D2 > D3 > D1"]
+    TQ["Tokenized Query"] --> |"BM25"| B1["BM25 Score 1"]
+    TD1["Tokenized Chunk 1"] --> B1
+    TQ --> |"BM25"| B2["BM25 Score 2"]
+    TD2["Tokenized Chunk 2"] --> B2
 ```
 
-- Dense and sparse ranked outputs are transformed into one fused ranking for robust retrieval.
-- Documents strong in both channels rise to top context for generation.
+**Output (Sample Scores):**
+```
+BM25(q, d₁) = 4.2
+BM25(q, d₂) = 3.7
+```
+**Sparse Ranked List:**
+1. Chunk 1 (4.2)
+2. Chunk 2 (3.7)
 
-**Equation used**
+---
 
+
+### Step 6: Hybrid Rank Merge (Reciprocal Rank Fusion)
+
+**Input:**
+- Dense ranked list: Chunk 1 > Chunk 2
+- Sparse ranked list: Chunk 1 > Chunk 2
+
+**Transformation:**
+Apply RRF to merge rankings.
+
+**Equation:**
 $$
 \mathrm{RRF}(d)=\sum_{r\in R}\frac{1}{k+r(d)},\; k\approx 60
 $$
 
-### Step 7: Algorithm: Retrieval-Augmented Generation (RAG) | Process: Grounded Draft Synthesis
-
+**Diagram:**
 ```mermaid
 flowchart LR
-    F["Structured Facts JSON
-Sec138, amount, date, reason"] --> RAG["Prompt Assembly + LLM"]
-    CTX["Top-k Retrieved Context
-(Act clauses + case snippets)"] --> RAG
-    RAG --> OUT["Output Draft
-Facts section + Legal basis + Demand clause"]
+    DR["Dense Ranking"] --> |"RRF"| F1["Fused Rank"]
+    SR["Sparse Ranking"] --> |"RRF"| F1
 ```
 
-- Facts JSON and fused legal context are transformed into grounded notice sections.
-- Prompt template: `Instructions + Facts JSON + Retrieved Context` to minimize unsupported claims.
+**Output (Fused Context Ranking):**
+1. Chunk 1
+2. Chunk 2
 
-### Step 8 (Optional): Algorithm: Causal Language Modeling + Debouncing | Process: Editor Suggestion Generation
+---
 
+
+### Step 7: Prompt Assembly & Draft Generation (RAG)
+
+**Input:**
+- Extracted Facts JSON
+- Top-k retrieved context chunks
+
+**Transformation:**
+Prompt template is filled:
+```
+INSTRUCTIONS: Draft a legal notice using the facts and legal context below.
+FACTS: {Facts JSON}
+CONTEXT: {Top-k Chunks}
+```
+Passed to LLM for generation.
+
+**Diagram:**
 ```mermaid
 flowchart LR
-    ED["Input Prefix
-'You are hereby called upon to pay...' "] --> DB["Debounce 300ms"]
-    DB --> CLM["Causal LM
-Next-token prediction"]
-    CLM --> SG["Output Suggestion
-'within 15 days of receipt of this notice'"]
+    FJ["Facts JSON"] --> |"Prompt Assembly"| PR["Prompt"]
+    CTX["Top-k Chunks"] --> PR
+    PR --> |"LLM"| OUT["Draft Notice"]
 ```
 
-- Partial draft text is transformed into next-token/next-phrase suggestions while the lawyer edits.
-- Debouncing gates API calls so suggestions stay responsive without over-triggering requests.
+**Output (Draft Excerpt):**
+```
+"Dear Sir/Madam,\n\nYou have issued a cheque dated 05 Jan 2025 for ₹2,50,000, which was returned unpaid due to insufficient funds. As per Section 138 of the NI Act, you are hereby called upon to pay the amount within 15 days of receipt of this notice..."
+```
 
-**Equation used**
+---
 
+
+### Step 8 (Optional): Editor Suggestion (Ghost Typing)
+
+**Input:**
+Partial draft: "You are hereby called upon to pay..."
+
+**Transformation:**
+After 300ms pause, next-token prediction is triggered.
+
+**Equation:**
 $$ P(x_t \mid x_{1:t-1}) = \mathrm{softmax}(z_t) $$
+
+**Diagram:**
+```mermaid
+flowchart LR
+    PD["Partial Draft"] --> |"Debounce 300ms"| CLM["Causal LM"]
+    CLM --> SUG["Suggestion"]
+```
+
+**Output:**
+Suggestion: "within 15 days of receipt of this notice."
+
+---
+
+**Summary Table: Example Query Transformation**
+
+| Step | Input | Output |
+|------|-------|--------|
+| 1 | User query | Facts JSON |
+| 2 | Legal text | Chunks |
+| 3 | Facts, Chunks | Vectors |
+| 4 | Vectors | Dense ranking |
+| 5 | Tokens | Sparse ranking |
+| 6 | Rankings | Fused context |
+| 7 | Facts, Context | Draft |
+| 8 | Partial draft | Suggestion |
 
