@@ -41,63 +41,66 @@ Goal: show how one user query is transformed step-by-step by the exact algorithm
 
 > "Draft a legal notice under Section 138 NI Act for cheque bounce. Cheque amount is ₹2,50,000, cheque date is 05 Jan 2025, return memo reason is 'insufficient funds'."
 
-### Step 1: Generative Extraction + One-Shot Prompting - Fact Structuring
+### Step 1: Algorithm: Generative Extraction + One-Shot Prompting | Process: Fact Structuring
 
 ```mermaid
 flowchart LR
     Q["Input Query
-Section 138 cheque-bounce request"] --> EX["Generative Extraction
+Section 138 cheque bounce, ₹2,50,000, insufficient funds"] --> EX["Generative Extraction
 + One-Shot Prompting"]
     EX --> F["Output Facts JSON
-statute, amount, cheque_date, reason"]
+statute=Sec138, amount=250000, reason=insufficient_funds"]
 ```
 
-- Input query text is converted into schema-valid structured facts, so downstream retrieval and drafting are deterministic.
-- One-shot prompting constrains the LLM to output normalized legal fields (instead of free-form prose).
+- Input query text is transformed into strict schema fields (statute, amount, cheque_date, dishonour_reason, task).
+- One-shot prompting reduces format drift by making the model emit normalized legal keys instead of free prose.
 
-### Step 2: Recursive Character Text Splitting - Corpus Chunking
+### Step 2: Algorithm: Recursive Character Text Splitting | Process: Query-Relevant Passage Chunking
 
 ```mermaid
 flowchart LR
-    KB["Legal Corpus Text
-acts/cases/news"] --> CH["Recursive Character
-Text Splitting"]
-    CH --> CK["Output Chunks
-overlap-preserved units"]
+    P["Input Passage (relevant to query)
+Section 138 NI Act... cheque returned unpaid due to insufficient funds... pay within 15 days..."] --> CH["Recursive Character Text Splitting
+L=1000, overlap=200"]
+    CH --> C1["Chunk 1
+...Section 138...cheque returned unpaid..."]
+    CH --> C2["Chunk 2 (overlap)
+...returned unpaid...insufficient funds...15 days..."]
 ```
 
-- Corpus documents are transformed from long legal text into overlapping chunks that preserve cross-sentence legal context.
-- For the example query, terms like "Section 138" and "dishonour" remain recoverable even near chunk boundaries.
+- Long legal text is transformed into overlapping chunks so query-critical terms survive split boundaries.
+- For this query, phrases like "Section 138", "insufficient funds", and "15 days" remain retrievable across adjacent chunks.
 
 **Equation / rule used**
 
 $$ s_i = i \cdot (L - o),\; L=1000,\; o=200 $$
 
-### Step 3: Sentence-BERT - Dense Vectorization
+### Step 3: Algorithm: Sentence-BERT (all-MiniLM-L6-v2) | Process: Dense Vectorization
 
 ```mermaid
 flowchart LR
-    QF["Input Query/Facts Text"] --> EMBQ["Sentence-BERT"]
-    CK["Input Chunks"] --> EMBD["Sentence-BERT"]
+    QF["Input Query/Facts Text
+'Section 138 cheque bounce insufficient funds'"] --> EMBQ["Sentence-BERT"]
+    C["Input Chunks (from Step 2)"] --> EMBD["Sentence-BERT"]
     EMBQ --> VQ["Query Vector q ∈ R^384"]
     EMBD --> VD["Chunk Vectors d ∈ R^384"]
 ```
 
-- Query/facts text and chunks are mapped into the same 384-d semantic vector space.
-- This transforms symbolic legal text into numeric representations usable by dense retrieval.
+- Query/facts and chunks are transformed into vectors in the same 384-dimensional semantic space.
+- This enables semantic matching even when exact legal wording differs.
 
-### Step 4: Cosine Similarity - Dense Retrieval Scoring
+### Step 4: Algorithm: Cosine Similarity | Process: Dense Retrieval Scoring
 
 ```mermaid
 flowchart LR
     VQ["Query Vector"] --> COS["Cosine Similarity"]
     VD["Chunk Vectors"] --> COS
     COS --> DR["Dense Ranked List
-semantic matches"]
+D5 > D3 > D2"]
 ```
 
-- The example query is transformed into dense semantic scores against each chunk.
-- Chunks discussing "dishonoured cheque" can rank high even if wording differs from "cheque bounce".
+- Vector pairs $(\mathbf{q},\mathbf{d})$ are transformed into semantic similarity scores per chunk.
+- Example behavior: a chunk containing "dishonoured cheque" can rank high for query phrase "cheque bounce".
 
 **Equation used**
 
@@ -106,19 +109,19 @@ $$
 \frac{\mathbf{q} \cdot \mathbf{d}}{\|\mathbf{q}\|\,\|\mathbf{d}\|}
 $$
 
-### Step 5: BM25 - Sparse Lexical Retrieval Scoring
+### Step 5: Algorithm: BM25 | Process: Sparse Lexical Retrieval Scoring
 
 ```mermaid
 flowchart LR
     TQ["Tokenized Query
-Section 138, NI Act"] --> BM["BM25"]
+['section','138','ni','act','cheque','bounce']"] --> BM["BM25"]
     TD["Tokenized Chunks"] --> BM
     BM --> SR["Sparse Ranked List
-keyword/legal-token matches"]
+D2 > D5 > D1"]
 ```
 
-- The same query is transformed into lexical term-frequency signals for statute-exact matching.
-- BM25 strongly rewards exact legal tokens like "Section 138" and "NI Act".
+- Token overlap and term statistics transform query/chunk tokens into lexical relevance scores.
+- BM25 strongly boosts exact legal tokens such as "Section 138" and "NI Act".
 
 **Equation used**
 
@@ -127,17 +130,20 @@ $$
 \frac{f(t,d)(k_1+1)}{f(t,d)+k_1\left(1-b+b\frac{|d|}{\mathrm{avgdl}}\right)}
 $$
 
-### Step 6: Reciprocal Rank Fusion (RRF) - Hybrid Rank Merge
+### Step 6: Algorithm: Reciprocal Rank Fusion (RRF) | Process: Hybrid Rank Merge
 
 ```mermaid
 flowchart LR
-    DR["Dense Ranked List"] --> RRF["Reciprocal Rank Fusion"]
-    SR["Sparse Ranked List"] --> RRF
-    RRF --> CTX["Output: Final Ranked Context"]
+    DR["Dense Ranked List
+D5 > D3 > D2"] --> RRF["Reciprocal Rank Fusion"]
+    SR["Sparse Ranked List
+D2 > D5 > D1"] --> RRF
+    RRF --> CTX["Output Context Rank
+D5 > D2 > D3 > D1"]
 ```
 
-- Dense and sparse rankings for the example query are merged into one robust context ranking.
-- Documents strong in either semantic or lexical channel move up; documents strong in both usually dominate.
+- Dense and sparse ranked outputs are transformed into one fused ranking for robust retrieval.
+- Documents strong in both channels rise to top context for generation.
 
 **Equation used**
 
@@ -145,34 +151,37 @@ $$
 \mathrm{RRF}(d)=\sum_{r\in R}\frac{1}{k+r(d)},\; k\approx 60
 $$
 
-### Step 7: Retrieval-Augmented Generation (RAG) - Grounded Draft Synthesis
+### Step 7: Algorithm: Retrieval-Augmented Generation (RAG) | Process: Grounded Draft Synthesis
 
 ```mermaid
 flowchart LR
-    F["Structured Facts JSON"] --> RAG["RAG Prompt Assembly
-+ LLM Generation"]
-    CTX["Top-k Ranked Legal Context"] --> RAG
-    RAG --> OUT["Output Draft Sections
-facts, legal basis, demand clause"]
+    F["Structured Facts JSON
+Sec138, amount, date, reason"] --> RAG["Prompt Assembly + LLM"]
+    CTX["Top-k Retrieved Context
+(Act clauses + case snippets)"] --> RAG
+    RAG --> OUT["Output Draft
+Facts section + Legal basis + Demand clause"]
 ```
 
-- The query is now transformed into a grounded draft via `Prompt = Instructions + Facts JSON + Retrieved Context`.
-- Output sections remain tied to retrieved legal material, reducing hallucinated legal claims.
+- Facts JSON and fused legal context are transformed into grounded notice sections.
+- Prompt template: `Instructions + Facts JSON + Retrieved Context` to minimize unsupported claims.
 
-### Step 8 (Optional): Causal Language Modeling + Debouncing - Editor Suggestions
+### Step 8 (Optional): Algorithm: Causal Language Modeling + Debouncing | Process: Editor Suggestion Generation
 
 ```mermaid
 flowchart LR
-    ED["User Partial Text"] --> DB["Debounce 300ms"]
+    ED["Input Prefix
+'You are hereby called upon to pay...' "] --> DB["Debounce 300ms"]
     DB --> CLM["Causal LM
 Next-token prediction"]
-    CLM --> SG["Inline Suggestion"]
+    CLM --> SG["Output Suggestion
+'within 15 days of receipt of this notice'"]
 ```
 
-- During editing, partial user text is transformed into next-token suggestions for drafting speed.
-- Debouncing controls request frequency, improving responsiveness and reducing noisy calls.
+- Partial draft text is transformed into next-token/next-phrase suggestions while the lawyer edits.
+- Debouncing gates API calls so suggestions stay responsive without over-triggering requests.
 
 **Equation used**
 
-$$ P(x_t\mid x_{<t}) = \mathrm{softmax}(z_t) $$
+$$ P(x_t \mid x_{1:t-1}) = \mathrm{softmax}(z_t) $$
 
