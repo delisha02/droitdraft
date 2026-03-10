@@ -6,32 +6,32 @@ This document provides a highly detailed architecture view of DroitDraft, includ
 
 ```mermaid
 flowchart LR
-    User["End User / Lawyer"] --> FE["Frontend (Next.js UI)"]
-    APIClient["External API Client"] --> GW
+    User["End User / Lawyer\nIn: Case facts\nOut: Query"] --> FE["Frontend (Next.js UI)\nIn: Query/files\nOut: API payload"]
+    APIClient["External API Client\nIn: API params\nOut: API payload"] --> GW
 
-    FE --> GW["API Gateway\nResponsibility: Auth, rate-limit, request routing"]
-    GW --> BE["Backend API\nResponsibility: Business logic, orchestration, response shaping"]
+    FE --> GW["API Gateway\nIn: API payload\nOut: Routed req"]
+    GW --> BE["Backend API\nIn: Routed req\nOut: Workflow cmd"]
 
-    BE --> Orch["Workflow Orchestrator"]
-    Orch --> DocProc["Document Processing Agent"]
-    Orch --> LegalRes["Legal Research Agent"]
-    Orch --> DocGen["Document Generation Agent"]
+    BE --> Orch["Workflow Orchestrator\nIn: Workflow cmd\nOut: Agent tasks"]
+    Orch --> DocProc["Document Processing Agent\nIn: Legal docs\nOut: Facts JSON"]
+    Orch --> LegalRes["Legal Research Agent\nIn: Legal query\nOut: Ranked acts"]
+    Orch --> DocGen["Document Generation Agent\nIn: Facts + context\nOut: Draft sections"]
 
-    DocProc --> Services["Core Services\nEmbedding ownership: Recursive Text Splitting + Sentence-BERT"]
+    DocProc --> Services["Core Services\nIn: Raw text\nOut: Chunks/vectors"]
     LegalRes --> Services
     DocGen --> Services
 
     %% Backend-mediated storage access only
-    BE --> PG[("PostgreSQL")]
-    BE --> CH[("ChromaDB")]
-    BE --> MO[("MinIO")]
+    BE --> PG[("PostgreSQL\nIn: User metadata\nOut: Case records")]
+    BE --> CH[("ChromaDB\nIn: Doc chunks\nOut: Top chunks")]
+    BE --> MO[("MinIO\nIn: Source files\nOut: File objects")]
     Services --> PG
     Services --> CH
     Services --> MO
 
-    Services --> IK["IndianKanoon"]
-    Services --> LL["LiveLaw"]
-    Services --> Groq["Groq API"]
+    Services --> IK["IndianKanoon\nIn: Act query\nOut: Case law"]
+    Services --> LL["LiveLaw\nIn: Crawl query\nOut: Legal news"]
+    Services --> Groq["Groq API\nIn: Prompt context\nOut: LLM draft"]
 ```
 
 ### 1.1 Interaction Explanation
