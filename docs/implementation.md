@@ -32,3 +32,66 @@ Instead of traditional CRF-based Named Entity Recognition (like Spacy), we use *
 ### 6.1.4 Ghost Typing (Predictive Text)
 *   **Method**: **Causal Language Modeling (Next Token Prediction)**. The model predicts the most probable next sequence of tokens based on the current cursor position.
 *   **Optimization Algorithm**: **Debouncing**. To prevent server overload and UI jitter, the API request is only triggered after the user stops typing for **300ms**. If the user types again within this window, the previous request is cancelled.
+
+## 6.2 Algorithm Walkthrough (PPT Slide Ready)
+
+This section can be copied directly into your project PPT to explain how one legal query is processed end-to-end.
+
+### 6.2.1 Example Input Query
+
+> "Draft a legal notice under Section 138 NI Act for cheque bounce. Cheque amount is ₹2,50,000, cheque date is 05 Jan 2025, return memo reason is 'insufficient funds'."
+
+### 6.2.2 Processing Steps and Algorithms
+
+1. **Input understanding + fact structuring**
+   - The user query and any uploaded document text are processed with **Generative Extraction** using **One-Shot Prompting**.
+   - Output is a structured facts object (party name, amount, cheque date, dishonour reason, notice context).
+
+2. **Knowledge base preparation (offline/ingestion path)**
+   - Legal corpus is chunked via **Recursive Character Text Splitting**.
+   - Chunks are encoded via **Sentence-BERT (all-MiniLM-L6-v2)** embeddings and stored for retrieval.
+
+3. **Hybrid legal retrieval for the current query**
+   - Dense semantic retrieval uses **Cosine Similarity** over embeddings.
+   - Sparse lexical retrieval uses **BM25**.
+   - Results are merged with **Reciprocal Rank Fusion (RRF)** to produce a ranked legal context.
+
+4. **Grounded draft generation**
+   - The structured facts + ranked legal context are passed to **Retrieval-Augmented Generation (RAG)**.
+   - The model generates draft legal notice sections (facts, legal grounds, demand clause, timeline).
+
+5. **Editor-time refinement (optional)**
+   - While the lawyer edits, **Causal Language Modeling** provides next-token suggestions.
+   - **Debouncing** controls request frequency to keep typing smooth and stable.
+
+### 6.2.3 Slide Diagram (Mermaid)
+
+```mermaid
+flowchart LR
+    Q["Input Query\nCheque bounce notice under Sec 138"] --> F["Fact Extraction\nGenerative Extraction + One-Shot Prompting"]
+    F --> S["Structured Facts\namount, date, memo reason"]
+
+    KB["Legal Corpus\nacts, cases, news"] --> C["Chunking\nRecursive Character Text Splitting"]
+    C --> E["Embeddings\nSentence-BERT"]
+    E --> V[("Vector Index")]
+
+    S --> D["Dense Retrieval\nCosine Similarity"]
+    V --> D
+    S --> B["Sparse Retrieval\nBM25"]
+    KB --> B
+
+    D --> R["Fusion\nReciprocal Rank Fusion (RRF)"]
+    B --> R
+
+    R --> G["Draft Generation\nRetrieval-Augmented Generation (RAG)"]
+    S --> G
+
+    G --> O["Output\nDraft Legal Notice (PDF/DOCX)"]
+```
+
+### 6.2.4 Example Output (What the model returns)
+
+- Notice heading and party details.
+- Factual chronology of cheque issuance and dishonour.
+- Legal basis under Section 138 NI Act with supporting context.
+- Demand paragraph and payment deadline language.
