@@ -2,97 +2,36 @@
 
 This document provides a highly detailed architecture view of DroitDraft, including runtime request flow, asynchronous processing, and legal data ingestion/research pipelines.
 
-## 1) Structured System Block Diagram (Condensed + Detailed)
+## 1) Structured System Block Diagram (PPT-Oriented)
 
 ```mermaid
-flowchart TB
-    %% Clients
-    User[End User / Lawyer]
-    APIClient[External API Client]
+flowchart LR
+    User["End User / Lawyer\nIn: Case facts\nOut: Query"] --> FE["Frontend (Next.js UI)\nIn: Query/files\nOut: API payload"]
+    APIClient["External API Client\nIn: API params\nOut: API payload"] --> GW
 
-    %% Application
-    subgraph APP[Application Tier]
-        FE[Frontend\nNext.js Pages + Components + Hooks]
-        NextAPI[Next API Routes / Server Actions]
-        BE[Backend API\nFastAPI v1 Endpoints]
-        Orch[Workflow Orchestrator\nAgent graph + state management]
+    FE --> GW["API Gateway\nIn: API payload\nOut: Routed req"]
+    GW --> BE["Backend API\nIn: Routed req\nOut: Workflow cmd"]
 
-        subgraph AGENTS[AI Agent Layer]
-            DocProc[Document Processor Agent]
-            LegalRes[Legal Research Agent]
-            DocGen[Document Generator Agent]
-        end
+    BE --> Orch["Workflow Orchestrator\nIn: Workflow cmd\nOut: Agent tasks"]
+    Orch --> DocProc["Document Processing Agent\nIn: Legal docs\nOut: Facts JSON"]
+    Orch --> LegalRes["Legal Research Agent\nIn: Legal query\nOut: Ranked acts"]
+    Orch --> DocGen["Document Generation Agent\nIn: Facts + context\nOut: Draft sections"]
 
-        Services[Core Services\nLLM, Storage, Template, Validator, Indexer, Ingestion]
-    end
-
-    %% Async + Data
-    subgraph PLATFORM[Platform & Data Tier]
-        Queue[Async Processing\nCelery Workers + Redis Broker]
-        PG[(PostgreSQL)]
-        CH[(ChromaDB)]
-        MO[(MinIO)]
-    end
-
-    %% External
-    subgraph EXT[External Providers]
-        IK[IndianKanoon]
-        LL[LiveLaw]
-        Groq[Groq API]
-    end
-
-    %% Interaction edges (explicit)
-    User --> FE
-    User --> NextAPI
-    APIClient --> BE
-
-    FE --> NextAPI
-    FE --> BE
-    NextAPI --> BE
-
-    BE --> Orch
-    BE --> Services
-    BE --> Queue
-
-    Orch --> DocProc
-    Orch --> LegalRes
-    Orch --> DocGen
-    Orch --> Services
-
-    DocProc --> Services
+    DocProc --> Services["Core Services\nIn: Raw text\nOut: Chunks/vectors"]
     LegalRes --> Services
     DocGen --> Services
 
-    Queue --> DocProc
-    Queue --> LegalRes
-    Queue --> DocGen
-    Queue --> Services
-
-    BE --> PG
-    BE --> CH
-    BE --> MO
-
-    DocProc --> PG
-    DocProc --> MO
-
-    LegalRes --> CH
-    LegalRes --> PG
-
-    DocGen --> PG
-
+    %% Backend-mediated storage access only
+    BE --> PG[("PostgreSQL\nIn: User metadata\nOut: Case records")]
+    BE --> CH[("ChromaDB\nIn: Doc chunks\nOut: Top chunks")]
+    BE --> MO[("MinIO\nIn: Source files\nOut: File objects")]
     Services --> PG
     Services --> CH
     Services --> MO
 
-    Services --> IK
-    Services --> LL
-    IK --> Services
-    LL --> Services
-
-    Services --> Groq
-    DocProc --> Groq
-    LegalRes --> Groq
-    DocGen --> Groq
+    Services --> IK["IndianKanoon\nIn: Act query\nOut: Case law"]
+    Services --> LL["LiveLaw\nIn: Crawl query\nOut: Legal news"]
+    Services --> Groq["Groq API\nIn: Prompt context\nOut: LLM draft"]
 ```
 
 ### 1.1 Interaction Explanation
@@ -102,7 +41,7 @@ flowchart TB
 - **Backend coordination**: FastAPI endpoints delegate orchestration to the workflow engine and feature-specific responsibilities to core services.
 - **Orchestration and agent execution**: The orchestrator sequences document-processing, legal-research, and document-generation agents, including state transitions and dependency ordering.
 - **Service-agent collaboration**: Agents and core services interact bidirectionally for shared capabilities (LLM calls, storage access, indexing, validation, and template handling).
-- **Async execution path**: Long-running workloads are pushed to Celery/Redis, where workers execute agent/service tasks outside request-response latency constraints.
+- **Processing execution path**: Requests are routed through orchestrator-managed agent steps; shared services persist and retrieve state/artifacts for each step.
 - **Persistence interactions**:
   - PostgreSQL stores transactional/stateful records (users, templates, jobs, metadata, draft states).
   - ChromaDB stores embeddings and retrieval indexes used by research and drafting assistance.
