@@ -35,63 +35,113 @@ Instead of traditional CRF-based Named Entity Recognition (like Spacy), we use *
 
 ## 6.2 Algorithm Walkthrough (PPT Slide Ready)
 
-This section can be copied directly into your project PPT to explain how one legal query is processed end-to-end.
+This version is intentionally deeper and can be split across multiple slides. We use one concrete cheque-bounce query and show exactly how each algorithm transforms data in this project.
 
-### 6.2.1 Example Input Query
+### 6.2.1 Example Query + Extracted Facts (Step 1)
+
+**Input query**
 
 > "Draft a legal notice under Section 138 NI Act for cheque bounce. Cheque amount is ₹2,50,000, cheque date is 05 Jan 2025, return memo reason is 'insufficient funds'."
 
-### 6.2.2 Processing Steps and Algorithms
+**How algorithm works here**
 
-1. **Input understanding + fact structuring**
-   - The user query and any uploaded document text are processed with **Generative Extraction** using **One-Shot Prompting**.
-   - Output is a structured facts object (party name, amount, cheque date, dishonour reason, notice context).
+- We run **Generative Extraction** with **One-Shot Prompting** against the query and OCR text.
+- The one-shot example constrains output into a strict JSON schema (fielded facts, not free text).
+- This reduces downstream ambiguity by converting natural language into canonical keys.
 
-2. **Knowledge base preparation (offline/ingestion path)**
-   - Legal corpus is chunked via **Recursive Character Text Splitting**.
-   - Chunks are encoded via **Sentence-BERT (all-MiniLM-L6-v2)** embeddings and stored for retrieval.
+**Example structured output (simplified)**
 
-3. **Hybrid legal retrieval for the current query**
-   - Dense semantic retrieval uses **Cosine Similarity** over embeddings.
-   - Sparse lexical retrieval uses **BM25**.
-   - Results are merged with **Reciprocal Rank Fusion (RRF)** to produce a ranked legal context.
-
-4. **Grounded draft generation**
-   - The structured facts + ranked legal context are passed to **Retrieval-Augmented Generation (RAG)**.
-   - The model generates draft legal notice sections (facts, legal grounds, demand clause, timeline).
-
-5. **Editor-time refinement (optional)**
-   - While the lawyer edits, **Causal Language Modeling** provides next-token suggestions.
-   - **Debouncing** controls request frequency to keep typing smooth and stable.
-
-### 6.2.3 Slide Diagram (Mermaid)
+```json
+{
+  "statute": "Section 138 NI Act",
+  "amount": 250000,
+  "cheque_date": "2025-01-05",
+  "dishonour_reason": "insufficient funds",
+  "task": "draft_legal_notice"
+}
+```
 
 ```mermaid
 flowchart LR
-    Q["Input Query\nCheque bounce notice under Sec 138"] --> F["Fact Extraction\nGenerative Extraction + One-Shot Prompting"]
-    F --> S["Structured Facts\namount, date, memo reason"]
-
-    KB["Legal Corpus\nacts, cases, news"] --> C["Chunking\nRecursive Character Text Splitting"]
-    C --> E["Embeddings\nSentence-BERT"]
-    E --> V[("Vector Index")]
-
-    S --> D["Dense Retrieval\nCosine Similarity"]
-    V --> D
-    S --> B["Sparse Retrieval\nBM25"]
-    KB --> B
-
-    D --> R["Fusion\nReciprocal Rank Fusion (RRF)"]
-    B --> R
-
-    R --> G["Draft Generation\nRetrieval-Augmented Generation (RAG)"]
-    S --> G
-
-    G --> O["Output\nDraft Legal Notice (PDF/DOCX)"]
+    Q["User Query + OCR Text"] --> EX["Generative Extraction\n+ One-Shot Prompting"]
+    EX --> F["Structured Facts JSON"]
 ```
 
-### 6.2.4 Example Output (What the model returns)
+### 6.2.2 Corpus Preparation for Retrieval (Step 2)
 
-- Notice heading and party details.
-- Factual chronology of cheque issuance and dishonour.
-- Legal basis under Section 138 NI Act with supporting context.
-- Demand paragraph and payment deadline language.
+**How algorithm works here**
+
+- Legal source text (acts/case snippets/news) is split using **Recursive Character Text Splitting** (1000 chars, 200 overlap).
+- Overlap preserves context where legal meaning crosses chunk boundaries.
+- Each chunk is converted to a dense vector using **Sentence-BERT (all-MiniLM-L6-v2)**.
+
+**Concrete effect for this query**
+
+- Terms like "Section 138", "dishonour", "notice" may appear across adjacent chunks.
+- Overlap improves recall so relevant parts are not lost at split boundaries.
+
+```mermaid
+flowchart LR
+    KB["Legal Corpus Text"] --> CH["Recursive Character\nText Splitting"]
+    CH --> EM["Sentence-BERT\nEmbedding"]
+    EM --> IDX["Vector Index (Chroma)"]
+```
+
+### 6.2.3 Hybrid Retrieval + Fusion on the Example Query (Step 3)
+
+**How algorithm works here**
+
+- From structured facts, we form retrieval query variants.
+- **BM25** prioritizes lexical/legal-token matches (e.g., "Section 138", "NI Act").
+- **Cosine Similarity** over embeddings captures semantic intent (e.g., "cheque bounce" ≈ "dishonoured cheque").
+- **Reciprocal Rank Fusion (RRF)** merges both ranked lists, so documents strong in either channel surface higher.
+
+**Mini worked ranking example**
+
+- BM25 top-3: `D2, D5, D1`
+- Dense top-3: `D5, D3, D2`
+- After RRF: `D5` (strong in both) > `D2` > `D3` > `D1`
+
+```mermaid
+flowchart LR
+    F["Facts + Query Variant"] --> BM["Sparse Retrieval\nBM25"]
+    F --> DS["Dense Retrieval\nCosine Similarity"]
+    IDX["Vector Index"] --> DS
+    BM --> RRF["Rank Fusion\nRRF"]
+    DS --> RRF
+    RRF --> CTX["Ranked Legal Context"]
+```
+
+### 6.2.4 Grounded Draft Generation (Step 4)
+
+**How algorithm works here**
+
+- **RAG** composes prompt = (structured facts + top retrieved context + drafting instructions).
+- The model is forced to draft using retrieved legal context, reducing unsupported claims.
+- Output is emitted as section-wise draft text for notice formatting.
+
+**Typical section outputs**
+
+- Party/transaction facts
+- Cheque dishonour chronology
+- Section 138 legal basis
+- Demand + payment timeline
+
+```mermaid
+flowchart LR
+    F["Structured Facts"] --> RAG["RAG Prompt Assembly\n+ LLM Generation"]
+    CTX["Top Ranked Context"] --> RAG
+    RAG --> OUT["Draft Notice Sections"]
+```
+
+### 6.2.5 Optional Editor-Time Assistance (Step 5)
+
+- During manual editing, **Causal Language Modeling** predicts continuation text.
+- **Debouncing (300ms)** avoids firing API calls on every keystroke.
+
+```mermaid
+flowchart LR
+    ED["User Typing"] --> DB["Debounce 300ms"]
+    DB --> CLM["Causal LM\nNext-token Suggestion"]
+    CLM --> SG["Inline Suggestion"]
+```
