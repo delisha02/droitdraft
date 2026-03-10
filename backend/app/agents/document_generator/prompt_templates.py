@@ -16,6 +16,8 @@ CORE PRINCIPLES:
 
 def create_generation_prompt(case_facts: Dict[str, Any], template: str) -> str:
     """Creates a prompt for the LLM to generate a legal document."""
+        import logging
+        logger = logging.getLogger(__name__)
     
     # Format facts more intelligently
     facts_lines = []
@@ -73,4 +75,5 @@ def create_generation_prompt(case_facts: Dict[str, Any], template: str) -> str:
 
 **Generated Legal Draft:**
 """
+        logger.info(f"[Step 7] Prompt assembled for LLM. Prompt preview: {prompt[:300]}...")
     return prompt

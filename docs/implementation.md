@@ -14,14 +14,14 @@ We implemented a standard RAG pipeline to ground the AI's generation in verified
     *   **Model**: We use **Sentence-BERT (all-MiniLM-L6-v2)** to map legal text to a **384-dimensional dense vector space**.
     *   **Similarity Metric**: We use **Cosine Similarity** to calculate the angle between the Query Vector and Document Vectors. The chunks with the highest cosine similarity score (closest to 1.0) are retrieved as relevant context.
 
-### 6.1.2 Hybrid Search (Keyword + Semantic)
-To improve retrieval accuracy for specific legal terms (e.g., "Section 138"), we implement a Hybrid Search strategy.
+### 6.1.2 Hybrid Search (Planned/Future Work)
+*Note: The current implementation uses only dense retrieval (Sentence-BERT + cosine similarity). Hybrid search, BM25, and Reciprocal Rank Fusion (RRF) are not yet implemented in the pipeline. The following is a conceptual description for future development:*
 
-*   **Dense Retrieval**: Uses Vector Similarity (captures semantic meaning like "bounced check").
-*   **Sparse Retrieval**: Uses **BM25 (Best Matching 25)** algorithm (captures exact keywords like "NI Act").
-*   **Fusion Algorithm**: **Reciprocal Rank Fusion (RRF)**. We rank the results from both methods and merge them based on the formula:
+- **Dense Retrieval**: Uses Vector Similarity (captures semantic meaning like "bounced check"). *(Implemented)*
+- **Sparse Retrieval**: Uses **BM25 (Best Matching 25)** algorithm (captures exact keywords like "NI Act"). *(Planned)*
+- **Fusion Algorithm**: **Reciprocal Rank Fusion (RRF)**. Ranks from both methods are merged using:
     $$ RRF(d) = \sum_{r \in R} \frac{1}{k + r(d)} $$
-    where $r(d)$ is the rank of document $d$ in the retrieved list $R$, and $k$ is a constant (typically 60).
+    where $r(d)$ is the rank of document $d$ in the retrieved list $R$, and $k$ is a constant (typically 60). *(Planned)*
 
 ### 6.1.3 Fact Extraction (NER via Generative AI)
 Instead of traditional CRF-based Named Entity Recognition (like Spacy), we use **Generative Extraction**.
@@ -104,14 +104,14 @@ Chunk 2: "...may make a demand for the payment... within 15 days of receiving in
 ---
 
 
-### Step 3: Dense Vectorization (Sentence-BERT)
+### Step 3: Dense Vectorization & Retrieval (Sentence-BERT)
 
 **Input:**
 - Query facts text: "Section 138 cheque bounce insufficient funds"
 - Chunks from Step 2
 
 **Transformation:**
-Encode both query and chunks into 384-dimensional vectors.
+Encode both query and chunks into 384-dimensional vectors using Sentence-BERT, then compute cosine similarity between the query vector and each chunk vector. The top-k chunks with the highest similarity are retrieved as context.
 
 **Diagram:**
 ```mermaid
@@ -119,39 +119,10 @@ flowchart LR
     QF["Facts Text"] --> |"Sentence-BERT"| VQ["Query Vector (q)"]
     C1["Chunk 1"] --> |"Sentence-BERT"| VD1["Chunk Vector (d₁)"]
     C2["Chunk 2"] --> |"Sentence-BERT"| VD2["Chunk Vector (d₂)"]
-```
-
-**Output:**
-```
-Query vector q ∈ ℝ³⁸⁴
-Chunk vectors d₁, d₂ ∈ ℝ³⁸⁴
-```
-
----
-
-
-### Step 4: Dense Retrieval Scoring (Cosine Similarity)
-
-**Input:**
-- Query vector q
-- Chunk vectors d₁, d₂
-
-**Transformation:**
-Compute cosine similarity between q and each dᵢ.
-
-**Equation:**
-$$
-\mathrm{cos\_sim}(\mathbf{q},\mathbf{d}) =
-\frac{\mathbf{q} \cdot \mathbf{d}}{\|\mathbf{q}\|\,\|\mathbf{d}\|}
-$$
-
-**Diagram:**
-```mermaid
-flowchart LR
-    VQ["Query Vector (q)"] --> |"Cosine Similarity"| S1["Score 1"]
-    VD1["Chunk Vector (d₁)"] --> S1
+    VQ --> |"Cosine Similarity"| S1["Score 1"]
+    VD1 --> S1
     VQ --> |"Cosine Similarity"| S2["Score 2"]
-    VD2["Chunk Vector (d₂)"] --> S2
+    VD2 --> S2
 ```
 
 **Output (Sample Scores):**
@@ -166,71 +137,7 @@ cos_sim(q, d₂) = 0.77
 ---
 
 
-### Step 5: Sparse Lexical Retrieval (BM25)
-
-**Input:**
-- Tokenized query: ["section", "138", "ni", "act", "cheque", "bounce"]
-- Tokenized chunks
-
-**Transformation:**
-BM25 scores based on token overlap and term statistics.
-
-**Equation:**
-$$
-\mathrm{BM25}(q,d)=\sum_{t\in q}\mathrm{IDF}(t)\cdot
-\frac{f(t,d)(k_1+1)}{f(t,d)+k_1\left(1-b+b\frac{|d|}{\mathrm{avgdl}}\right)}
-$$
-
-**Diagram:**
-```mermaid
-flowchart LR
-    TQ["Tokenized Query"] --> |"BM25"| B1["BM25 Score 1"]
-    TD1["Tokenized Chunk 1"] --> B1
-    TQ --> |"BM25"| B2["BM25 Score 2"]
-    TD2["Tokenized Chunk 2"] --> B2
-```
-
-**Output (Sample Scores):**
-```
-BM25(q, d₁) = 4.2
-BM25(q, d₂) = 3.7
-```
-**Sparse Ranked List:**
-1. Chunk 1 (4.2)
-2. Chunk 2 (3.7)
-
----
-
-
-### Step 6: Hybrid Rank Merge (Reciprocal Rank Fusion)
-
-**Input:**
-- Dense ranked list: Chunk 1 > Chunk 2
-- Sparse ranked list: Chunk 1 > Chunk 2
-
-**Transformation:**
-Apply RRF to merge rankings.
-
-**Equation:**
-$$
-\mathrm{RRF}(d)=\sum_{r\in R}\frac{1}{k+r(d)},\; k\approx 60
-$$
-
-**Diagram:**
-```mermaid
-flowchart LR
-    DR["Dense Ranking"] --> |"RRF"| F1["Fused Rank"]
-    SR["Sparse Ranking"] --> |"RRF"| F1
-```
-
-**Output (Fused Context Ranking):**
-1. Chunk 1
-2. Chunk 2
-
----
-
-
-### Step 7: Prompt Assembly & Draft Generation (RAG)
+### Step 4: Prompt Assembly & Draft Generation (RAG)
 
 **Input:**
 - Extracted Facts JSON
@@ -290,10 +197,7 @@ Suggestion: "within 15 days of receipt of this notice."
 |------|-------|--------|
 | 1 | User query | Facts JSON |
 | 2 | Legal text | Chunks |
-| 3 | Facts, Chunks | Vectors |
-| 4 | Vectors | Dense ranking |
-| 5 | Tokens | Sparse ranking |
-| 6 | Rankings | Fused context |
-| 7 | Facts, Context | Draft |
-| 8 | Partial draft | Suggestion |
+| 3 | Facts, Chunks | Dense ranking |
+| 4 | Facts, Context | Draft |
+| 5 | Partial draft | Suggestion |
 
