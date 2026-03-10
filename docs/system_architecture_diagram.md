@@ -2,93 +2,72 @@
 
 This document provides a highly detailed architecture view of DroitDraft, including runtime request flow, asynchronous processing, and legal data ingestion/research pipelines.
 
-## 1) Structured System Block Diagram (Condensed + Detailed)
+## 1) Structured System Block Diagram (PPT-Oriented)
 
 ```mermaid
-flowchart TB
-    %% Clients
+flowchart LR
+    %% Client Layer
     User[End User / Lawyer]
     APIClient[External API Client]
 
-    %% Application
+    %% Application Tier
     subgraph APP[Application Tier]
-        FE[Frontend\nNext.js Pages + Components + Hooks]
-        NextAPI[Next API Routes / Server Actions]
-        BE[Backend API\nFastAPI v1 Endpoints]
-        Orch[Workflow Orchestrator\nAgent graph + state management]
+        FE[Frontend (Component Rendering)]
+        Gateway[API Gateway (Routing + JWT Validation)]
+        BE[Backend API (REST Validation + Business Rules)]
+        Orch[Workflow Orchestrator (State Machine + DAG Scheduling)]
 
         subgraph AGENTS[AI Agent Layer]
-            DocProc[Document Processor Agent]
-            LegalRes[Legal Research Agent]
-            DocGen[Document Generator Agent]
+            DocProc[Document Processor (OCR + NER + Entity Resolution)]
+            LegalRes[Legal Research (RAG Retrieval + Re-ranking)]
+            DocGen[Document Generator (Template Filling + Consistency Check)]
         end
 
-        Services[Core Services\nLLM, Storage, Template, Validator, Indexer, Ingestion]
+        Services[Core Services (Embedding + Indexing + Rule Validation)]
     end
 
-    %% Async + Data
+    %% Platform & Data
     subgraph PLATFORM[Platform & Data Tier]
-        Queue[Async Processing\nCelery Workers + Redis Broker]
-        PG[(PostgreSQL)]
-        CH[(ChromaDB)]
-        MO[(MinIO)]
+        Queue[Async Queue (Celery Task Scheduling)]
+        PG[(PostgreSQL (Relational Query Planning))]
+        CH[(ChromaDB (Vector Similarity Search))]
+        MO[(MinIO (Object Storage Indexing))]
     end
 
-    %% External
+    %% External Providers
     subgraph EXT[External Providers]
-        IK[IndianKanoon]
-        LL[LiveLaw]
-        Groq[Groq API]
+        IK[IndianKanoon (Search + Parsing)]
+        LL[LiveLaw (Scraping + Deduplication)]
+        Groq[Groq API (LLM Inference)]
     end
 
-    %% Interaction edges (explicit)
-    User --> FE
-    User --> NextAPI
+    User --> FE --> Gateway --> BE
     APIClient --> BE
 
-    FE --> NextAPI
-    FE --> BE
-    NextAPI --> BE
-
     BE --> Orch
-    BE --> Services
-    BE --> Queue
-
     Orch --> DocProc
     Orch --> LegalRes
     Orch --> DocGen
-    Orch --> Services
 
+    BE --> Services
     DocProc --> Services
     LegalRes --> Services
     DocGen --> Services
 
+    BE --> Queue
     Queue --> DocProc
     Queue --> LegalRes
     Queue --> DocGen
-    Queue --> Services
-
-    BE --> PG
-    BE --> CH
-    BE --> MO
-
-    DocProc --> PG
-    DocProc --> MO
-
-    LegalRes --> CH
-    LegalRes --> PG
-
-    DocGen --> PG
 
     Services --> PG
     Services --> CH
     Services --> MO
+    DocProc --> MO
+    LegalRes --> CH
+    DocGen --> PG
 
     Services --> IK
     Services --> LL
-    IK --> Services
-    LL --> Services
-
     Services --> Groq
     DocProc --> Groq
     LegalRes --> Groq
