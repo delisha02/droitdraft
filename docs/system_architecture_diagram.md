@@ -7,38 +7,37 @@ This document provides a highly detailed architecture view of DroitDraft, includ
 ```mermaid
 flowchart LR
     %% Client Layer
-    User["End User / Lawyer"]
-    APIClient["External API Client"]
+    User["End User or Lawyer\nOutput: Case facts and drafting intent"]
+    APIClient["External API Client\nOutput: Structured API request"]
 
     %% Application Tier
     subgraph APP["Application Tier"]
-        FE["Frontend (Component Rendering)"]
-        Gateway["API Gateway (Routing and JWT Validation)"]
-        BE["Backend API (REST Validation and Business Rules)"]
-        Orch["Workflow Orchestrator (State Machine and DAG Scheduling)"]
+        FE["Frontend\nInput: User actions/files\nOutput: Validated UI payload"]
+        Gateway["API Gateway\nInput: HTTP request + JWT\nOutput: Authorized routed request"]
+        BE["Backend API\nInput: Authorized request\nOutput: Workflow command + response"]
+        Orch["Workflow Orchestrator (State Machine and DAG Scheduling)\nInput: Workflow command\nOutput: Ordered agent tasks"]
 
         subgraph AGENTS["AI Agent Layer"]
-            DocProc["Document Processor (OCR and NER and Entity Resolution)"]
-            LegalRes["Legal Research (RAG Retrieval and Re-ranking)"]
-            DocGen["Document Generator (Template Filling and Consistency Check)"]
+            DocProc["Document Processor (Generative Extraction + One-Shot Prompting)\nInput: OCR text/document\nOutput: Structured facts JSON"]
+            LegalRes["Legal Research (Hybrid Search + BM25 + Cosine Similarity + RRF)\nInput: Legal query + facts\nOutput: Ranked legal context"]
+            DocGen["Document Generator (Retrieval-Augmented Generation)\nInput: Facts + retrieved context\nOutput: Draft legal sections"]
         end
 
-        Services["Core Services (Embedding and Indexing and Rule Validation)"]
+        Services["Core Services (Recursive Character Text Splitting + Sentence-BERT Embeddings)\nInput: Raw legal text/query\nOutput: Chunks + vectors + validated templates"]
     end
 
     %% Platform and Data
     subgraph PLATFORM["Platform and Data Tier"]
-        Queue["Async Queue (Celery Task Scheduling)"]
-        PG[("PostgreSQL (Relational Query Planning)")]
-        CH[("ChromaDB (Vector Similarity Search)")]
-        MO[("MinIO (Object Storage Indexing)")]
+        PG[("PostgreSQL\nInput: Jobs/templates/metadata\nOutput: Transactional records")]
+        CH[("ChromaDB\nInput: Embedding vectors\nOutput: Top-k semantic matches")]
+        MO[("MinIO\nInput: Uploaded/source files\nOutput: Stored artifacts")]
     end
 
     %% External Providers
     subgraph EXT["External Providers"]
-        IK["IndianKanoon (Search and Parsing)"]
-        LL["LiveLaw (Scraping and Deduplication)"]
-        Groq["Groq API (LLM Inference)"]
+        IK["IndianKanoon\nInput: Legal search request\nOutput: Case-law results"]
+        LL["LiveLaw\nInput: Crawl/query request\nOutput: Legal news/judgment content"]
+        Groq["Groq API\nInput: Prompt + context\nOutput: LLM completion"]
     end
 
     User --> FE --> Gateway --> BE
@@ -53,11 +52,6 @@ flowchart LR
     DocProc --> Services
     LegalRes --> Services
     DocGen --> Services
-
-    BE --> Queue
-    Queue --> DocProc
-    Queue --> LegalRes
-    Queue --> DocGen
 
     Services --> PG
     Services --> CH
@@ -81,7 +75,7 @@ flowchart LR
 - **Backend coordination**: FastAPI endpoints delegate orchestration to the workflow engine and feature-specific responsibilities to core services.
 - **Orchestration and agent execution**: The orchestrator sequences document-processing, legal-research, and document-generation agents, including state transitions and dependency ordering.
 - **Service-agent collaboration**: Agents and core services interact bidirectionally for shared capabilities (LLM calls, storage access, indexing, validation, and template handling).
-- **Async execution path**: Long-running workloads are pushed to Celery/Redis, where workers execute agent/service tasks outside request-response latency constraints.
+- **Processing execution path**: Requests are routed through orchestrator-managed agent steps; shared services persist and retrieve state/artifacts for each step.
 - **Persistence interactions**:
   - PostgreSQL stores transactional/stateful records (users, templates, jobs, metadata, draft states).
   - ChromaDB stores embeddings and retrieval indexes used by research and drafting assistance.
