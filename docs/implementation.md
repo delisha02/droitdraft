@@ -145,3 +145,90 @@ flowchart LR
     DB --> CLM["Causal LM\nNext-token Suggestion"]
     CLM --> SG["Inline Suggestion"]
 ```
+
+
+### 6.2.6 Exact Query Transformation by Step (with Equations)
+
+Below, the same input query is traced as it changes representation at each stage.
+
+#### Step 1: Natural Language -> Structured Facts
+
+- **Input form**: raw text query.
+- **Algorithm**: Generative Extraction + One-Shot Prompting.
+- **Output form**: schema-valid JSON facts object.
+- **Transformation shown**:
+  - `"... Section 138 ... amount ₹2,50,000 ... insufficient funds"`
+  - becomes
+  - `{statute: "Section 138 NI Act", amount: 250000, dishonour_reason: "insufficient funds", ...}`
+
+#### Step 2: Legal Corpus -> Retrieval Units
+
+- **Input form**: long legal documents.
+- **Algorithm**: Recursive Character Text Splitting.
+- **Output form**: overlapping chunks.
+- **Chunk boundary rule** (configured):
+  - chunk size `L = 1000` chars, overlap `o = 200` chars.
+  - chunk start index for chunk `i`: 
+    $$ s_i = i \cdot (L - o) $$
+
+#### Step 3: Chunks/Query -> Dense Vectors
+
+- **Input form**: query text + chunk text.
+- **Algorithm**: Sentence-BERT embedding.
+- **Output form**: dense vectors in shared semantic space.
+- **Representation**:
+  - query vector: $\mathbf{q} \in \mathbb{R}^{384}$
+  - chunk vector: $\mathbf{d} \in \mathbb{R}^{384}$
+
+#### Step 4: Dense Similarity Scoring
+
+- **Input form**: $(\mathbf{q}, \mathbf{d})$ vectors.
+- **Algorithm**: Cosine Similarity.
+- **Output form**: semantic score per chunk.
+- **Equation**:
+  $$
+  \mathrm{cos\_sim}(\mathbf{q},\mathbf{d}) =
+  \frac{\mathbf{q} \cdot \mathbf{d}}{\|\mathbf{q}\|\,\|\mathbf{d}\|}
+  $$
+
+#### Step 5: Sparse Lexical Scoring
+
+- **Input form**: tokenized query + tokenized legal chunks.
+- **Algorithm**: BM25.
+- **Output form**: lexical relevance score per chunk/document.
+- **Equation**:
+  $$
+  \mathrm{BM25}(q,d)=\sum_{t\in q}\mathrm{IDF}(t)\cdot
+  \frac{f(t,d)(k_1+1)}{f(t,d)+k_1\left(1-b+b\frac{|d|}{\mathrm{avgdl}}\right)}
+  $$
+  where $f(t,d)$ is term frequency, $|d|$ is document length.
+
+#### Step 6: Two Ranked Lists -> One Final Ranked Context
+
+- **Input form**: dense rank list + BM25 rank list.
+- **Algorithm**: Reciprocal Rank Fusion (RRF).
+- **Output form**: fused ranking used as context.
+- **Equation**:
+  $$
+  \mathrm{RRF}(d)=\sum_{r\in R}\frac{1}{k+r(d)}
+  $$
+  where $r(d)$ is rank of document $d$ in retriever $r$, and typically $k=60$.
+
+#### Step 7: Facts + Top-k Context -> Draft Sections
+
+- **Input form**: structured facts + top ranked legal context.
+- **Algorithm**: Retrieval-Augmented Generation (RAG).
+- **Output form**: grounded draft sections (facts, legal basis, demand clause).
+- **Prompt composition**:
+  - `Prompt = Instructions + Facts JSON + Retrieved Context`.
+
+#### Step 8 (Optional): Partial User Text -> Next-token Suggestion
+
+- **Input form**: current editor prefix text.
+- **Algorithm**: Causal Language Modeling (+ Debouncing for request pacing).
+- **Output form**: inline continuation suggestion.
+- **Equation** (next token probability):
+  $$
+  P(x_t\mid x_{<t}) = \mathrm{softmax}(z_t)
+  $$
+  where $z_t$ are model logits for token position $t$.
