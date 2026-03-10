@@ -33,202 +33,146 @@ Instead of traditional CRF-based Named Entity Recognition (like Spacy), we use *
 *   **Method**: **Causal Language Modeling (Next Token Prediction)**. The model predicts the most probable next sequence of tokens based on the current cursor position.
 *   **Optimization Algorithm**: **Debouncing**. To prevent server overload and UI jitter, the API request is only triggered after the user stops typing for **300ms**. If the user types again within this window, the previous request is cancelled.
 
-## 6.2 Algorithm Walkthrough (PPT Slide Ready)
+## 6.2 Algorithm Walkthrough on One Example Query (Single Slide Narrative)
 
-This version is intentionally deeper and can be split across multiple slides. We use one concrete cheque-bounce query and show exactly how each algorithm transforms data in this project.
+Goal: show how one user query is transformed step-by-step by the exact algorithms used in this project.
 
-### 6.2.1 Example Query + Extracted Facts (Step 1)
-
-**Input query**
+**Example query used across all steps**
 
 > "Draft a legal notice under Section 138 NI Act for cheque bounce. Cheque amount is ₹2,50,000, cheque date is 05 Jan 2025, return memo reason is 'insufficient funds'."
 
-**How algorithm works here**
-
-- We run **Generative Extraction** with **One-Shot Prompting** against the query and OCR text.
-- The one-shot example constrains output into a strict JSON schema (fielded facts, not free text).
-- This reduces downstream ambiguity by converting natural language into canonical keys.
-
-**Example structured output (simplified)**
-
-```json
-{
-  "statute": "Section 138 NI Act",
-  "amount": 250000,
-  "cheque_date": "2025-01-05",
-  "dishonour_reason": "insufficient funds",
-  "task": "draft_legal_notice"
-}
-```
+### Step 1: Generative Extraction + One-Shot Prompting - Fact Structuring
 
 ```mermaid
 flowchart LR
-    Q["User Query + OCR Text"] --> EX["Generative Extraction\n+ One-Shot Prompting"]
-    EX --> F["Structured Facts JSON"]
+    Q["Input Query
+Section 138 cheque-bounce request"] --> EX["Generative Extraction
++ One-Shot Prompting"]
+    EX --> F["Output Facts JSON
+statute, amount, cheque_date, reason"]
 ```
 
-### 6.2.2 Corpus Preparation for Retrieval (Step 2)
+- Input query text is converted into schema-valid structured facts, so downstream retrieval and drafting are deterministic.
+- One-shot prompting constrains the LLM to output normalized legal fields (instead of free-form prose).
 
-**How algorithm works here**
-
-- Legal source text (acts/case snippets/news) is split using **Recursive Character Text Splitting** (1000 chars, 200 overlap).
-- Overlap preserves context where legal meaning crosses chunk boundaries.
-- Each chunk is converted to a dense vector using **Sentence-BERT (all-MiniLM-L6-v2)**.
-
-**Concrete effect for this query**
-
-- Terms like "Section 138", "dishonour", "notice" may appear across adjacent chunks.
-- Overlap improves recall so relevant parts are not lost at split boundaries.
+### Step 2: Recursive Character Text Splitting - Corpus Chunking
 
 ```mermaid
 flowchart LR
-    KB["Legal Corpus Text"] --> CH["Recursive Character\nText Splitting"]
-    CH --> EM["Sentence-BERT\nEmbedding"]
-    EM --> IDX["Vector Index (Chroma)"]
+    KB["Legal Corpus Text
+acts/cases/news"] --> CH["Recursive Character
+Text Splitting"]
+    CH --> CK["Output Chunks
+overlap-preserved units"]
 ```
 
-### 6.2.3 Hybrid Retrieval + Fusion on the Example Query (Step 3)
+- Corpus documents are transformed from long legal text into overlapping chunks that preserve cross-sentence legal context.
+- For the example query, terms like "Section 138" and "dishonour" remain recoverable even near chunk boundaries.
 
-**How algorithm works here**
+**Equation / rule used**
 
-- From structured facts, we form retrieval query variants.
-- **BM25** prioritizes lexical/legal-token matches (e.g., "Section 138", "NI Act").
-- **Cosine Similarity** over embeddings captures semantic intent (e.g., "cheque bounce" ≈ "dishonoured cheque").
-- **Reciprocal Rank Fusion (RRF)** merges both ranked lists, so documents strong in either channel surface higher.
+$$ s_i = i \cdot (L - o),\; L=1000,\; o=200 $$
 
-**Mini worked ranking example**
-
-- BM25 top-3: `D2, D5, D1`
-- Dense top-3: `D5, D3, D2`
-- After RRF: `D5` (strong in both) > `D2` > `D3` > `D1`
+### Step 3: Sentence-BERT - Dense Vectorization
 
 ```mermaid
 flowchart LR
-    F["Facts + Query Variant"] --> BM["Sparse Retrieval\nBM25"]
-    F --> DS["Dense Retrieval\nCosine Similarity"]
-    IDX["Vector Index"] --> DS
-    BM --> RRF["Rank Fusion\nRRF"]
-    DS --> RRF
-    RRF --> CTX["Ranked Legal Context"]
+    QF["Input Query/Facts Text"] --> EMBQ["Sentence-BERT"]
+    CK["Input Chunks"] --> EMBD["Sentence-BERT"]
+    EMBQ --> VQ["Query Vector q ∈ R^384"]
+    EMBD --> VD["Chunk Vectors d ∈ R^384"]
 ```
 
-### 6.2.4 Grounded Draft Generation (Step 4)
+- Query/facts text and chunks are mapped into the same 384-d semantic vector space.
+- This transforms symbolic legal text into numeric representations usable by dense retrieval.
 
-**How algorithm works here**
-
-- **RAG** composes prompt = (structured facts + top retrieved context + drafting instructions).
-- The model is forced to draft using retrieved legal context, reducing unsupported claims.
-- Output is emitted as section-wise draft text for notice formatting.
-
-**Typical section outputs**
-
-- Party/transaction facts
-- Cheque dishonour chronology
-- Section 138 legal basis
-- Demand + payment timeline
+### Step 4: Cosine Similarity - Dense Retrieval Scoring
 
 ```mermaid
 flowchart LR
-    F["Structured Facts"] --> RAG["RAG Prompt Assembly\n+ LLM Generation"]
-    CTX["Top Ranked Context"] --> RAG
-    RAG --> OUT["Draft Notice Sections"]
+    VQ["Query Vector"] --> COS["Cosine Similarity"]
+    VD["Chunk Vectors"] --> COS
+    COS --> DR["Dense Ranked List
+semantic matches"]
 ```
 
-### 6.2.5 Optional Editor-Time Assistance (Step 5)
+- The example query is transformed into dense semantic scores against each chunk.
+- Chunks discussing "dishonoured cheque" can rank high even if wording differs from "cheque bounce".
 
-- During manual editing, **Causal Language Modeling** predicts continuation text.
-- **Debouncing (300ms)** avoids firing API calls on every keystroke.
+**Equation used**
+
+$$
+\mathrm{cos\_sim}(\mathbf{q},\mathbf{d}) =
+\frac{\mathbf{q} \cdot \mathbf{d}}{\|\mathbf{q}\|\,\|\mathbf{d}\|}
+$$
+
+### Step 5: BM25 - Sparse Lexical Retrieval Scoring
 
 ```mermaid
 flowchart LR
-    ED["User Typing"] --> DB["Debounce 300ms"]
-    DB --> CLM["Causal LM\nNext-token Suggestion"]
+    TQ["Tokenized Query
+Section 138, NI Act"] --> BM["BM25"]
+    TD["Tokenized Chunks"] --> BM
+    BM --> SR["Sparse Ranked List
+keyword/legal-token matches"]
+```
+
+- The same query is transformed into lexical term-frequency signals for statute-exact matching.
+- BM25 strongly rewards exact legal tokens like "Section 138" and "NI Act".
+
+**Equation used**
+
+$$
+\mathrm{BM25}(q,d)=\sum_{t\in q}\mathrm{IDF}(t)\cdot
+\frac{f(t,d)(k_1+1)}{f(t,d)+k_1\left(1-b+b\frac{|d|}{\mathrm{avgdl}}\right)}
+$$
+
+### Step 6: Reciprocal Rank Fusion (RRF) - Hybrid Rank Merge
+
+```mermaid
+flowchart LR
+    DR["Dense Ranked List"] --> RRF["Reciprocal Rank Fusion"]
+    SR["Sparse Ranked List"] --> RRF
+    RRF --> CTX["Output: Final Ranked Context"]
+```
+
+- Dense and sparse rankings for the example query are merged into one robust context ranking.
+- Documents strong in either semantic or lexical channel move up; documents strong in both usually dominate.
+
+**Equation used**
+
+$$
+\mathrm{RRF}(d)=\sum_{r\in R}\frac{1}{k+r(d)},\; k\approx 60
+$$
+
+### Step 7: Retrieval-Augmented Generation (RAG) - Grounded Draft Synthesis
+
+```mermaid
+flowchart LR
+    F["Structured Facts JSON"] --> RAG["RAG Prompt Assembly
++ LLM Generation"]
+    CTX["Top-k Ranked Legal Context"] --> RAG
+    RAG --> OUT["Output Draft Sections
+facts, legal basis, demand clause"]
+```
+
+- The query is now transformed into a grounded draft via `Prompt = Instructions + Facts JSON + Retrieved Context`.
+- Output sections remain tied to retrieved legal material, reducing hallucinated legal claims.
+
+### Step 8 (Optional): Causal Language Modeling + Debouncing - Editor Suggestions
+
+```mermaid
+flowchart LR
+    ED["User Partial Text"] --> DB["Debounce 300ms"]
+    DB --> CLM["Causal LM
+Next-token prediction"]
     CLM --> SG["Inline Suggestion"]
 ```
 
+- During editing, partial user text is transformed into next-token suggestions for drafting speed.
+- Debouncing controls request frequency, improving responsiveness and reducing noisy calls.
 
-### 6.2.6 Exact Query Transformation by Step (with Equations)
+**Equation used**
 
-Below, the same input query is traced as it changes representation at each stage.
+$$ P(x_t\mid x_{<t}) = \mathrm{softmax}(z_t) $$
 
-#### Step 1: Natural Language -> Structured Facts
-
-- **Input form**: raw text query.
-- **Algorithm**: Generative Extraction + One-Shot Prompting.
-- **Output form**: schema-valid JSON facts object.
-- **Transformation shown**:
-  - `"... Section 138 ... amount ₹2,50,000 ... insufficient funds"`
-  - becomes
-  - `{statute: "Section 138 NI Act", amount: 250000, dishonour_reason: "insufficient funds", ...}`
-
-#### Step 2: Legal Corpus -> Retrieval Units
-
-- **Input form**: long legal documents.
-- **Algorithm**: Recursive Character Text Splitting.
-- **Output form**: overlapping chunks.
-- **Chunk boundary rule** (configured):
-  - chunk size `L = 1000` chars, overlap `o = 200` chars.
-  - chunk start index for chunk `i`: 
-    $$ s_i = i \cdot (L - o) $$
-
-#### Step 3: Chunks/Query -> Dense Vectors
-
-- **Input form**: query text + chunk text.
-- **Algorithm**: Sentence-BERT embedding.
-- **Output form**: dense vectors in shared semantic space.
-- **Representation**:
-  - query vector: $\mathbf{q} \in \mathbb{R}^{384}$
-  - chunk vector: $\mathbf{d} \in \mathbb{R}^{384}$
-
-#### Step 4: Dense Similarity Scoring
-
-- **Input form**: $(\mathbf{q}, \mathbf{d})$ vectors.
-- **Algorithm**: Cosine Similarity.
-- **Output form**: semantic score per chunk.
-- **Equation**:
-  $$
-  \mathrm{cos\_sim}(\mathbf{q},\mathbf{d}) =
-  \frac{\mathbf{q} \cdot \mathbf{d}}{\|\mathbf{q}\|\,\|\mathbf{d}\|}
-  $$
-
-#### Step 5: Sparse Lexical Scoring
-
-- **Input form**: tokenized query + tokenized legal chunks.
-- **Algorithm**: BM25.
-- **Output form**: lexical relevance score per chunk/document.
-- **Equation**:
-  $$
-  \mathrm{BM25}(q,d)=\sum_{t\in q}\mathrm{IDF}(t)\cdot
-  \frac{f(t,d)(k_1+1)}{f(t,d)+k_1\left(1-b+b\frac{|d|}{\mathrm{avgdl}}\right)}
-  $$
-  where $f(t,d)$ is term frequency, $|d|$ is document length.
-
-#### Step 6: Two Ranked Lists -> One Final Ranked Context
-
-- **Input form**: dense rank list + BM25 rank list.
-- **Algorithm**: Reciprocal Rank Fusion (RRF).
-- **Output form**: fused ranking used as context.
-- **Equation**:
-  $$
-  \mathrm{RRF}(d)=\sum_{r\in R}\frac{1}{k+r(d)}
-  $$
-  where $r(d)$ is rank of document $d$ in retriever $r$, and typically $k=60$.
-
-#### Step 7: Facts + Top-k Context -> Draft Sections
-
-- **Input form**: structured facts + top ranked legal context.
-- **Algorithm**: Retrieval-Augmented Generation (RAG).
-- **Output form**: grounded draft sections (facts, legal basis, demand clause).
-- **Prompt composition**:
-  - `Prompt = Instructions + Facts JSON + Retrieved Context`.
-
-#### Step 8 (Optional): Partial User Text -> Next-token Suggestion
-
-- **Input form**: current editor prefix text.
-- **Algorithm**: Causal Language Modeling (+ Debouncing for request pacing).
-- **Output form**: inline continuation suggestion.
-- **Equation** (next token probability):
-  $$
-  P(x_t\mid x_{<t}) = \mathrm{softmax}(z_t)
-  $$
-  where $z_t$ are model logits for token position $t$.
