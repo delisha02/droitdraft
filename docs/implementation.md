@@ -86,7 +86,26 @@ Section 138. Dishonour of cheque for insufficiency, etc., of funds in the accoun
 Split into overlapping chunks (L=1000, overlap=200):
 
 **Equation:**
-$$ s_i = i \cdot (L - o),\; L=1000,\; o=200 $$
+$$
+s_i = i \cdot (L - o),\; L=1000,\; o=200
+$$
+For the example query, the first two chunk start indices are:
+$$
+s_0 = 0 \cdot (1000 - 200) = 0 \\
+s_1 = 1 \cdot (1000 - 200) = 800
+$$
+
+**Example (using sample passage):**
+Suppose the legal passage is 1800 characters long. The chunking would produce:
+
+- Chunk 1: characters 0–999
+- Chunk 2: characters 800–1799
+
+So, for the example passage:
+```
+Chunk 1: "Section 138. Dishonour of cheque for insufficiency... payee may make a demand... [first 1000 chars]"
+Chunk 2: "...may make a demand for the payment... within 15 days of receiving information... [next 1000 chars, starting at char 800]"
+```
 
 **Diagram:**
 ```mermaid
@@ -112,6 +131,23 @@ Chunk 2: "...may make a demand for the payment... within 15 days of receiving in
 
 **Transformation:**
 Encode both query and chunks into 384-dimensional vectors using Sentence-BERT, then compute cosine similarity between the query vector and each chunk vector. The top-k chunks with the highest similarity are retrieved as context.
+
+**Example (actual values):**
+- Query facts text: "Section 138 cheque bounce insufficient funds"
+- Chunk 1 vector: `[0.12, 0.03, ..., 0.09]` (384-dim)
+- Chunk 2 vector: `[0.11, 0.02, ..., 0.08]` (384-dim)
+- Query vector: `[0.13, 0.04, ..., 0.10]` (384-dim)
+
+Cosine similarity calculation (for illustration):
+$$
+\cos(\theta) = \frac{q \cdot d}{\|q\|\|d\|}
+$$
+For the example vectors, suppose:
+$$
+\cos(q, d_1) = 0.82 \\
+\cos(q, d_2) = 0.77
+$$
+So, Chunk 1 is ranked higher.
 
 **Diagram:**
 ```mermaid
@@ -177,7 +213,9 @@ Partial draft: "You are hereby called upon to pay..."
 After 300ms pause, next-token prediction is triggered.
 
 **Equation:**
-$$ P(x_t \mid x_{1:t-1}) = \mathrm{softmax}(z_t) $$
+$$
+P(x_t \mid x_{1:t-1}) = \mathrm{softmax}(z_t)
+$$
 
 **Diagram:**
 ```mermaid
@@ -188,6 +226,10 @@ flowchart LR
 
 **Output:**
 Suggestion: "within 15 days of receipt of this notice."
+
+**Example (actual values):**
+- Partial draft: "You are hereby called upon to pay..."
+- After 300ms pause, model suggests: "within 15 days of receipt of this notice."
 
 ---
 
