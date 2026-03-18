@@ -12,9 +12,9 @@
 - [x] Align hybrid retriever behavior and defaults with product requirements (weights, k, fusion policy).
 
 ### 0.2 Simulation and placeholder audit
-- [ ] Replace or isolate simulated paths in orchestrator/document export routes.
-- [ ] Identify dead/unused utilities and stale references.
-- [ ] Produce `cleanup_audit.md` with keep/remove/replace decisions.
+- [x] Replace or isolate simulated paths in orchestrator/document export routes.
+- [x] Identify dead/unused utilities and stale references.
+- [x] Produce `cleanup_audit.md` with keep/remove/replace decisions.
 
 ### 0.3 Test baseline
 - [x] Run focused retriever tests and fix regressions.
@@ -37,4 +37,4 @@
 
 ## Immediate next implementation ticket
 1. Add contract tests for generation response schema (including `retrieval_sources`).
-2. Produce cleanup audit (`cleanup_audit.md`) for simulated/dead paths.
+2. Add orchestrator cleanup tests for input validation/session lifecycle and begin entrypoint consolidation.
