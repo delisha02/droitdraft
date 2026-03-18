@@ -17,7 +17,7 @@
 - [ ] Produce `cleanup_audit.md` with keep/remove/replace decisions.
 
 ### 0.3 Test baseline
-- [ ] Run focused retriever tests and fix regressions.
+- [x] Run focused retriever tests and fix regressions.
 - [ ] Add contract tests for retriever output schema.
 - [ ] Add smoke test for generation route with retrieval disabled/enabled flags.
 
@@ -36,5 +36,5 @@
 - [ ] Step budgets, circuit breakers, fallback to deterministic RAG.
 
 ## Immediate next implementation ticket
-1. Verify hybrid retriever with unit tests.
-2. Return retrieval sources in generation response schema.
+1. Add contract tests for generation response schema (including `retrieval_sources`).
+2. Align hybrid retriever defaults/weights and expose config controls.
