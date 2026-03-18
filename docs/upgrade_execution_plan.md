@@ -18,7 +18,7 @@
 
 ### 0.3 Test baseline
 - [x] Run focused retriever tests and fix regressions.
-- [ ] Add contract tests for retriever output schema.
+- [x] Add contract tests for retriever output schema.
 - [ ] Add smoke test for generation route with retrieval disabled/enabled flags.
 
 ## Phase 1 — Retrieval in Draft Generation
@@ -36,5 +36,5 @@
 - [ ] Step budgets, circuit breakers, fallback to deterministic RAG.
 
 ## Immediate next implementation ticket
-1. Add contract tests for generation response schema (including `retrieval_sources`).
-2. Add orchestrator cleanup tests for input validation/session lifecycle and begin entrypoint consolidation.
+1. Add smoke/integration test for generation route with retrieval disabled/enabled and verify `retrieval_sources`.
+2. Begin orchestrator entrypoint consolidation (`workflow_builder`/`graph_config` vs `WorkflowEngine`) and deprecation path.

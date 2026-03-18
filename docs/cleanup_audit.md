@@ -15,7 +15,7 @@
 
 ## Deferred Items (Next Cleanup PR)
 1. Consolidate orchestrator execution entrypoints (`workflow_builder`/`graph_config` vs `WorkflowEngine`) behind one canonical runtime path.
-2. Add focused orchestrator unit tests for:
+2. ✅ Add focused orchestrator unit tests for:
    - missing `template_id` rejection in `document_processor_node`,
    - DB session close behavior in `get_template_node`,
    - fallback `research_query` derivation.
