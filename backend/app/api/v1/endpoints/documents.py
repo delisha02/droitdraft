@@ -10,8 +10,67 @@ from app.api import deps
 from app.agents.document_generator.assembly_engine import assembly_engine
 from app.agents.document_generator.ghost_typing import ghost_typing_engine
 from app.integrations.indiankanoon.data_processor import IndianKanoonDataProcessor
+from app.services.retrieval_service import RetrievalService
 
 router = APIRouter()
+
+def _build_retrieval_query(case_facts: dict) -> str:
+    """
+    Build a compact legal-retrieval query from available user and extracted facts.
+    """
+    query_parts = [
+        case_facts.get("prompt"),
+        case_facts.get("query"),
+        case_facts.get("instructions"),
+        case_facts.get("issue"),
+        case_facts.get("statute"),
+        case_facts.get("location"),
+    ]
+    query = " ".join([str(p).strip() for p in query_parts if p]).strip()
+    return query
+
+
+def _fetch_grounded_legal_context(query: str, k: int = 5) -> tuple[str, list[dict]]:
+    """
+    Retrieve supporting legal snippets and source metadata for generation grounding.
+    """
+    if not query:
+        return "", []
+
+    try:
+        retrieval_service = RetrievalService()
+        retriever = retrieval_service.get_persistent_retriever(k=k)
+        docs = retriever.invoke(query)
+    except Exception as e:
+        print(f"Retrieval failed: {e}")
+        return "", []
+
+    context_blocks = []
+    sources = []
+    for idx, doc in enumerate(docs or []):
+        content = (doc.page_content or "").strip()
+        if not content:
+            continue
+        snippet = content[:1200]
+        metadata = doc.metadata or {}
+        title = metadata.get("title") or "Unknown Title"
+        source = metadata.get("source") or "Unknown Source"
+        url = metadata.get("url")
+        header = f"Source {idx + 1}: {title} ({source})"
+        if url:
+            header += f" - {url}"
+
+        context_blocks.append(f"{header}\n{snippet}")
+        sources.append(
+            {
+                "title": title,
+                "source": source,
+                "url": url,
+                "id": metadata.get("doc_id") or metadata.get("tid"),
+            }
+        )
+
+    return "\n\n".join(context_blocks), sources
 
 
 @router.post("/generate", response_model=schemas_document.Document)
@@ -69,6 +128,13 @@ async def generate_document(
             for k, v in evidence_facts.items():
                 if k not in merged_facts or not merged_facts[k]:
                     merged_facts[k] = v
+
+    # Retrieve supporting legal context for grounding
+    retrieval_query = _build_retrieval_query(merged_facts)
+    legal_context, legal_sources = _fetch_grounded_legal_context(retrieval_query, k=5)
+    if legal_context:
+        merged_facts["retrieved_legal_context"] = legal_context
+        merged_facts["retrieved_legal_sources"] = legal_sources
 
     try:
         generated_content = await assembly_engine.assemble_document(
