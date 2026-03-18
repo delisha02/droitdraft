@@ -5,6 +5,33 @@ from typing import List
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import SentenceTransformerEmbeddings
 
+def get_hybrid_retriever(
+    documents: List[Document],
+    embedding_model: str = "all-MiniLM-L6-v2",
+    k: int = 5,
+) -> EnsembleRetriever:
+    """
+    Builds an in-memory hybrid retriever using dense + sparse retrieval.
+
+    This is primarily used for testing and local experimentation where a
+    list of LangChain `Document` objects is already available.
+    """
+    embeddings = SentenceTransformerEmbeddings(model_name=embedding_model)
+
+    # Dense retriever via vector store
+    vectorstore = Chroma.from_documents(documents, embeddings)
+    vector_retriever = vectorstore.as_retriever(search_kwargs={"k": k})
+
+    # Sparse retriever via BM25
+    bm25_retriever = BM25Retriever.from_documents(documents)
+    bm25_retriever.k = k
+
+    # Fuse results from both retrievers
+    return EnsembleRetriever(
+        retrievers=[bm25_retriever, vector_retriever],
+        weights=[0.5, 0.5]
+    )
+
 
 def get_persistent_retriever(persist_directory: str = "chroma_db", collection_name: str = "legal_judgments", k: int = 5):
     """
@@ -26,4 +53,3 @@ def get_persistent_retriever(persist_directory: str = "chroma_db", collection_na
     )
     
     return vectorstore.as_retriever(search_kwargs={"k": k})
-
