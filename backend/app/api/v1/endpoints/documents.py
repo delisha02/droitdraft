@@ -73,7 +73,7 @@ def _fetch_grounded_legal_context(query: str, k: int = 5) -> tuple[str, list[dic
     return "\n\n".join(context_blocks), sources
 
 
-@router.post("/generate", response_model=schemas_document.Document)
+@router.post("/generate", response_model=schemas_document.GeneratedDocumentResponse)
 async def generate_document(
     *,
     db: Session = Depends(deps.get_db),
@@ -149,7 +149,16 @@ async def generate_document(
     doc_create = schemas_document.DocumentCreate(title=doc_in.title, content=generated_content)
     # Save with owner_id using the specialized method
     document = crud.document.create_with_owner(db, obj_in=doc_create, owner_id=current_user.id)
-    return document
+    # Return persisted document fields + retrieval provenance for transparency
+    return {
+        "id": document.id,
+        "title": document.title,
+        "content": document.content,
+        "owner_id": document.owner_id,
+        "created_at": document.created_at,
+        "updated_at": document.updated_at,
+        "retrieval_sources": legal_sources if retrieval_query else [],
+    }
 
 
 @router.post("/ghost-suggest", response_model=GhostSuggestResponse)
