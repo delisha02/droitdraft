@@ -24,9 +24,10 @@ This roadmap outlines the transition from a functional document editor to a full
 
 ---
 
-## Phase 2: Agentic RAG & Research (Nearly Completed)
+## Phase 2: Agentic RAG & Research (✅ COMPLETED)
 ### 2.1 LiveLaw & Indian Kanoon Deep Sync
 - [x] **RAG Pipeline**: Persistent ChromaDB indexing Maharashtra High Court & Bombay High Court judgments (~50+ docs seeded).
+- [x] **Hybrid Retrieval**: Dense vector search + BM25 sparse retrieval fused using Reciprocal Rank Fusion (RRF).
 - [x] **Indian Kanoon Client**: Full API integration for searching and fetching judgments via POST.
 - [x] **Research Sandbox**: Integrated Editor Sidebar (Research Tab) for grounded legal Q&A.
 ### 2.2 Advanced Citation Engine (✅ COMPLETED)

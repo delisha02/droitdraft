@@ -14,14 +14,12 @@ We implemented a standard RAG pipeline to ground the AI's generation in verified
     *   **Model**: We use **Sentence-BERT (all-MiniLM-L6-v2)** to map legal text to a **384-dimensional dense vector space**.
     *   **Similarity Metric**: We use **Cosine Similarity** to calculate the angle between the Query Vector and Document Vectors. The chunks with the highest cosine similarity score (closest to 1.0) are retrieved as relevant context.
 
-### 6.1.2 Hybrid Search (Planned/Future Work)
-*Note: The current implementation uses only dense retrieval (Sentence-BERT + cosine similarity). Hybrid search, BM25, and Reciprocal Rank Fusion (RRF) are not yet implemented in the pipeline. The following is a conceptual description for future development:*
-
+### 6.1.2 Hybrid Search (Implemented)
 - **Dense Retrieval**: Uses Vector Similarity (captures semantic meaning like "bounced check"). *(Implemented)*
-- **Sparse Retrieval**: Uses **BM25 (Best Matching 25)** algorithm (captures exact keywords like "NI Act"). *(Planned)*
-- **Fusion Algorithm**: **Reciprocal Rank Fusion (RRF)**. Ranks from both methods are merged using:
+- **Sparse Retrieval**: Uses **BM25 (Best Matching 25)** algorithm (captures exact keywords like "NI Act"). *(Implemented)*
+- **Fusion Algorithm**: **Reciprocal Rank Fusion (RRF)** via weighted ensembling. Ranks from both methods are merged using:
     $$ RRF(d) = \sum_{r \in R} \frac{1}{k + r(d)} $$
-    where $r(d)$ is the rank of document $d$ in the retrieved list $R$, and $k$ is a constant (typically 60). *(Planned)*
+    where $r(d)$ is the rank of document $d$ in the retrieved list $R$, and $k$ is a constant (typically 60). *(Implemented)*
 
 ### 6.1.3 Fact Extraction (NER via Generative AI)
 Instead of traditional CRF-based Named Entity Recognition (like Spacy), we use **Generative Extraction**.

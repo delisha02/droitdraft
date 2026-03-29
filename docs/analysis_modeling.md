@@ -148,7 +148,7 @@ The project development is divided into two academic terms involving distinct ph
 
 | Phase | Duration | Key Milestones | Status |
 | :--- | :--- | :--- | :--- |
-| **Phase 2: RAG & Research** | Jan 1 - Feb 15 | ChromaDB Integration, Legal Research Agent | **In Progress** |
+| **Phase 2: RAG & Research** | Jan 1 - Feb 15 | ChromaDB Integration, Legal Research Agent, Hybrid Retrieval | **Completed** |
 | **Phase 3: Advanced UX** | Feb 16 - Mar 15 | Ghost Typing, Interactive Sidebar | Planned |
 | **Testing & Optimization** | Mar 16 - Mar 31 | Unit Tests, Load Testing, Bug Fixes | Planned |
 | **Final Documentation & Report** | Apr 1 - Apr 15 | Final Report, User Manual, Presentation | Planned |
@@ -163,8 +163,8 @@ gantt
     Prototype Impl.         :done,    des3, 2025-10-01, 2025-10-31
     Phase 1 Knowledge       :active,  des4, 2025-11-01, 2025-12-15
     section Term II
-    Phase 2 RAG & Research  :active,  dev1, 2026-01-01, 2026-02-15
-    Phase 3 Advanced UX     :         dev2, 2026-02-16, 2026-03-15
-    Testing                 :         dev3, 2026-03-16, 2026-03-31
+    Phase 2 RAG & Research  :done,    dev1, 2026-01-01, 2026-02-15
+    Phase 3 Advanced UX     :done,    dev2, 2026-02-16, 2026-03-15
+    Testing                 :active,  dev3, 2026-03-16, 2026-03-31
     Final Report            :         dev4, 2026-04-01, 2026-04-15
 ```
