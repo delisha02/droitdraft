@@ -40,6 +40,10 @@ def test_generated_document_response_defaults_retrieval_sources_to_empty_list():
     )
 
     assert model.retrieval_sources == []
+    assert model.clause_traceability == []
+    assert model.validation_report == {}
+    assert model.confidence_score == 0.0
+    assert model.citation_checks == {}
 
 
 def test_generated_document_response_preserves_retrieval_source_contract_shape():

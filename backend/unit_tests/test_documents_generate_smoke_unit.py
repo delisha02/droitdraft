@@ -88,6 +88,7 @@ def _load_documents_endpoint_module():
     doc_gen_pkg = ModuleType("app.agents.document_generator")
     assembly_mod = ModuleType("app.agents.document_generator.assembly_engine")
     ghost_typing_mod = ModuleType("app.agents.document_generator.ghost_typing")
+    legal_validation_mod = ModuleType("app.agents.document_generator.legal_validation")
 
     async def _assemble_document(template, case_facts, title):
         return f"generated::{title}::{template}::{bool(case_facts.get('retrieved_legal_context'))}"
@@ -97,6 +98,10 @@ def _load_documents_endpoint_module():
 
     assembly_mod.assembly_engine = SimpleNamespace(assemble_document=_assemble_document)
     ghost_typing_mod.ghost_typing_engine = SimpleNamespace(suggest_next_sentence=_suggest_next_sentence)
+    legal_validation_mod.build_clause_traceability = lambda content, sources: [{"clause_id": "C1", "text": content}]
+    legal_validation_mod.build_citation_checks = lambda content: {"total_clauses": 1, "clauses_with_citations": 1}
+    legal_validation_mod.build_validation_report = lambda content, sources: {"passed": True, "issue_count": 0, "issues": []}
+    legal_validation_mod.compute_confidence_score = lambda report, checks: 0.95
 
     integrations_pkg = ModuleType("app.integrations")
     ik_pkg = ModuleType("app.integrations.indiankanoon")
@@ -158,6 +163,7 @@ def _load_documents_endpoint_module():
         "app.agents.document_generator": doc_gen_pkg,
         "app.agents.document_generator.assembly_engine": assembly_mod,
         "app.agents.document_generator.ghost_typing": ghost_typing_mod,
+        "app.agents.document_generator.legal_validation": legal_validation_mod,
         "app.integrations": integrations_pkg,
         "app.integrations.indiankanoon": ik_pkg,
         "app.integrations.indiankanoon.data_processor": processor_mod,
@@ -207,6 +213,8 @@ def test_generate_document_returns_retrieval_sources_when_context_available():
     assert isinstance(result["retrieval_sources"], list)
     assert result["retrieval_sources"][0]["title"] == "Case A"
     assert captured["case_facts"]["retrieved_legal_context"] == "Context block"
+    assert result["validation_report"]["passed"] is True
+    assert result["confidence_score"] == 0.95
 
 
 def test_generate_document_returns_empty_retrieval_sources_when_query_empty():
@@ -230,3 +238,4 @@ def test_generate_document_returns_empty_retrieval_sources_when_query_empty():
     )
 
     assert result["retrieval_sources"] == []
+    assert "citation_checks" in result

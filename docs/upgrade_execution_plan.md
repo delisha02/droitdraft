@@ -27,14 +27,14 @@
 - [x] Return draft + sources in response.
 
 ## Phase 2 — Clause + Validation
-- [ ] Clause-level generation and traceability.
-- [ ] Deterministic legal validation report.
-- [ ] Confidence scoring and citation checks.
+- [x] Clause-level generation and traceability.
+- [x] Deterministic legal validation report.
+- [x] Confidence scoring and citation checks.
 
 ## Phase 3 — Targeted Agentic Mode
 - [ ] Policy-gated agentic escalation for complex cases only.
 - [ ] Step budgets, circuit breakers, fallback to deterministic RAG.
 
 ## Immediate next implementation ticket
-1. Begin orchestrator entrypoint consolidation (`workflow_builder`/`graph_config` vs `WorkflowEngine`) and deprecation path.
+1. Begin Phase 3: policy-gated agentic escalation with explicit step budgets/circuit breakers.
 2. Standardize endpoint logging/error handling (`print` -> structured logger) in generation/retrieval paths.
