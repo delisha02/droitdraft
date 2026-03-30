@@ -131,6 +131,9 @@ def _load_documents_endpoint_module():
     class _FakeRetrievalService:
         def get_persistent_retriever(self, k=5):
             return _FakeRetriever()
+        
+        def retrieve_documents(self, query, strategy="dense", k=5):
+            return []
 
     retrieval_service_mod.RetrievalService = _FakeRetrievalService
 
@@ -200,7 +203,7 @@ def test_generate_document_returns_retrieval_sources_when_context_available():
         return "generated-body"
 
     module.assembly_engine.assemble_document = _assemble_document
-    module._fetch_grounded_legal_context = lambda query, k=5: (
+    module._fetch_grounded_legal_context = lambda query, strategy="dense", k=5: (
         "Context block",
         [{"title": "Case A", "source": "SCC", "url": "https://example.test", "id": "1"}],
     )
@@ -228,7 +231,7 @@ def test_generate_document_returns_empty_retrieval_sources_when_query_empty():
         return "generated-body"
 
     module.assembly_engine.assemble_document = _assemble_document
-    module._fetch_grounded_legal_context = lambda query, k=5: (
+    module._fetch_grounded_legal_context = lambda query, strategy="dense", k=5: (
         "Context block should be ignored",
         [{"title": "Case A"}],
     )
@@ -244,3 +247,15 @@ def test_generate_document_returns_empty_retrieval_sources_when_query_empty():
     assert result["retrieval_sources"] == []
     assert "citation_checks" in result
     assert "agentic_decision" in result
+
+
+def test_select_retrieval_strategy_routes_complex_queries_to_hybrid():
+    module = _load_documents_endpoint_module()
+
+    decision = module._select_retrieval_strategy(
+        "Draft petition under Section 138 of Negotiable Instruments Act, 1881",
+        {"file_ids": ["f1", "f2"]},
+    )
+
+    assert decision["strategy"] == "hybrid"
+    assert decision["k"] == 8

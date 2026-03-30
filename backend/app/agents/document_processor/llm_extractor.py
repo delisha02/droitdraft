@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Dict, Any, List, Optional
 from app.agents.document_generator.llm_client import llm_client
 from app.schemas.case_facts import CaseFact, Party, Claim, TimelineEvent
@@ -58,9 +59,8 @@ class LLMExtractor:
             extracted_data = json.loads(json_str)
             return extracted_data
         except Exception as e:
-            import traceback
-            print(f"LLM Extraction failed: {e}")
-            traceback.print_exc()
+            logger = logging.getLogger(__name__)
+            logger.exception("LLM extraction failed: %s", e)
             return {
                 "parties": [],
                 "claims": [],

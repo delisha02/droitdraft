@@ -36,5 +36,5 @@
 - [x] Step budgets, circuit breakers, fallback to deterministic RAG.
 
 ## Immediate next implementation ticket
-1. Add multi-strategy retrieval routing (query-type aware sparse/dense/hybrid selection) before generation.
-2. Standardize endpoint logging/error handling (`print` -> structured logger) in generation/retrieval paths.
+1. Add observability metrics for retrieval strategy choice, remediation attempts, and validation outcomes.
+2. Add integration tests around hybrid-strategy routing and remediation fallback behavior on real dependency stack.

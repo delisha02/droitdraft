@@ -55,3 +55,31 @@ class RetrievalService:
             keyword_weight=resolved_keyword_weight,
             semantic_weight=resolved_semantic_weight,
         )
+
+    def retrieve_documents(
+        self,
+        query: str,
+        strategy: str = "dense",
+        k: int = 5,
+    ) -> List[Document]:
+        """
+        Route retrieval by strategy with safe fallback to dense retrieval.
+        Strategies:
+        - dense: persistent vectorstore retrieval
+        - hybrid: dense candidate fetch + in-memory hybrid rerank
+        """
+        dense_retriever = self.get_persistent_retriever(k=k)
+        dense_docs = dense_retriever.invoke(query) or []
+
+        if strategy != "hybrid":
+            return dense_docs
+
+        if not dense_docs:
+            return []
+
+        try:
+            hybrid_retriever = self.get_hybrid_retriever(documents=dense_docs, k=k)
+            return hybrid_retriever.invoke(query) or dense_docs
+        except Exception:
+            # Guardrail: never fail request path due to hybrid rerank issues.
+            return dense_docs

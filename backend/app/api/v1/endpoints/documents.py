@@ -1,4 +1,5 @@
-
+import logging
+import re
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -20,6 +21,7 @@ from app.integrations.indiankanoon.data_processor import IndianKanoonDataProcess
 from app.services.retrieval_service import RetrievalService
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 def _build_retrieval_query(case_facts: dict) -> str:
     """
@@ -37,7 +39,25 @@ def _build_retrieval_query(case_facts: dict) -> str:
     return query
 
 
-def _fetch_grounded_legal_context(query: str, k: int = 5) -> tuple[str, list[dict]]:
+def _select_retrieval_strategy(query: str, case_facts: dict) -> dict:
+    """
+    Route retrieval mode based on query/facts complexity.
+    """
+    if not query:
+        return {"strategy": "dense", "k": 0, "reason": "empty_query"}
+
+    token_count = len(query.split())
+    has_multiple_files = len(case_facts.get("file_ids", []) or []) > 1
+    citation_like = bool(
+        re.search(r"\b(section|article)\s+\d+", query, re.IGNORECASE)
+        or re.search(r"\bact,\s*\d{4}\b", query, re.IGNORECASE)
+    )
+    if citation_like or has_multiple_files or token_count > 18:
+        return {"strategy": "hybrid", "k": 8, "reason": "complex_or_citation_heavy_query"}
+    return {"strategy": "dense", "k": 5, "reason": "default_dense_path"}
+
+
+def _fetch_grounded_legal_context(query: str, strategy: str = "dense", k: int = 5) -> tuple[str, list[dict]]:
     """
     Retrieve supporting legal snippets and source metadata for generation grounding.
     """
@@ -46,10 +66,9 @@ def _fetch_grounded_legal_context(query: str, k: int = 5) -> tuple[str, list[dic
 
     try:
         retrieval_service = RetrievalService()
-        retriever = retrieval_service.get_persistent_retriever(k=k)
-        docs = retriever.invoke(query)
+        docs = retrieval_service.retrieve_documents(query=query, strategy=strategy, k=k)
     except Exception as e:
-        print(f"Retrieval failed: {e}")
+        logger.warning("Retrieval failed for strategy=%s: %s", strategy, e)
         return "", []
 
     context_blocks = []
@@ -121,7 +140,7 @@ async def generate_document(
                 if text:
                    all_extracted_text += f"\n--- Evidence from {fid} ---\n{text}\n"
             except Exception as e:
-                print(f"Failed to process file {fid}: {e}")
+                logger.warning("Failed to process evidence file %s: %s", fid, e)
             finally:
                 if local_path:
                     storage.delete_local_file(local_path)
@@ -138,7 +157,12 @@ async def generate_document(
 
     # Retrieve supporting legal context for grounding
     retrieval_query = _build_retrieval_query(merged_facts)
-    legal_context, legal_sources = _fetch_grounded_legal_context(retrieval_query, k=5)
+    retrieval_strategy = _select_retrieval_strategy(retrieval_query, merged_facts)
+    legal_context, legal_sources = _fetch_grounded_legal_context(
+        retrieval_query,
+        strategy=retrieval_strategy["strategy"],
+        k=retrieval_strategy["k"],
+    )
     if legal_context:
         merged_facts["retrieved_legal_context"] = legal_context
         merged_facts["retrieved_legal_sources"] = legal_sources
@@ -169,6 +193,7 @@ async def generate_document(
         validation_report=validation_report,
         confidence_score=confidence_score,
     )
+    agentic_decision["retrieval_strategy"] = retrieval_strategy
     agentic_decision["executed"] = False
     agentic_decision["attempts"] = 0
     agentic_decision["fallback_to_deterministic"] = False
