@@ -20,23 +20,31 @@ async def document_processor_node(state: DroitAgentState) -> DroitAgentState:
     import logging
     logger = logging.getLogger(__name__)
 
-    # Simulate entity extraction
+    # Extract entities from the free-text query
     extracted_entities = extract_entities(state["query"])
     logger.info(f"[Step 1] Extracted entities: {extracted_entities}")
 
-    # Simulate fact structuring
+    # Structure extracted entities into case facts
     fact_structurer = FactStructurer()
-    # Using a dummy document_id and type for now, as they are not extracted from query
     structured_facts: CaseFact = fact_structurer.structure_facts(
         extracted_entities, 
-        document_id="query_document", 
+        document_id=state.get("document_id", "query_document"),
         document_type="natural_language_query"
     )
     logger.info(f"[Step 1] Structured facts: {structured_facts}")
 
     state["case_facts"] = structured_facts
-    state["template_id"] = 1 # Template ID for the test
-    state["research_query"] = "Maharashtra Rent Control Act" # Example research query
+
+    # Respect user-provided routing inputs when present.
+    # Avoid hardcoded template/research values in production workflow.
+    if not state.get("template_id"):
+        raise ValueError("Template ID is missing from workflow input.")
+
+    if not state.get("research_query"):
+        # Best-effort fallback from structured facts; keep optional.
+        potential_query = structured_facts.issue if hasattr(structured_facts, "issue") else None
+        if potential_query:
+            state["research_query"] = potential_query
 
     return state
 
@@ -46,16 +54,19 @@ async def get_template_node(state: DroitAgentState) -> DroitAgentState:
     
     import logging
     logger = logging.getLogger(__name__)
-    db = next(deps.get_db())
-    template = crud.template.get(db, id=template_id) 
-    if not template:
-        # If template not found, raise an exception, let WorkflowEngine handle
-        raise ValueError(f"Template with ID {template_id} not found")
-    else:
+    db_gen = deps.get_db()
+    db = next(db_gen)
+    try:
+        template = crud.template.get(db, id=template_id)
+        if not template:
+            # If template not found, raise an exception, let WorkflowEngine handle
+            raise ValueError(f"Template with ID {template_id} not found")
         state["template_content"] = template.content
         state["document_title"] = template.title
         logger.info(f"[Step 2] Loaded template title: {template.title}")
         logger.info(f"[Step 2] Loaded template content: {template.content[:200]}...")
+    finally:
+        db.close()
     return state
 async def document_generator_node(state: DroitAgentState) -> DroitAgentState:
     """Generates the document using the assembly engine."""
@@ -96,4 +107,3 @@ async def legal_research_node(state: DroitAgentState) -> DroitAgentState:
     state["research_results"] = search_results
     await client.close()
     return state
-

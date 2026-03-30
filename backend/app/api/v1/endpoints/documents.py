@@ -1,4 +1,5 @@
-
+import logging
+import re
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -8,13 +9,97 @@ from app.schemas import document as schemas_document
 from app.schemas.document import DocumentGenerate, GhostSuggestRequest, GhostSuggestResponse
 from app.api import deps
 from app.agents.document_generator.assembly_engine import assembly_engine
+from app.agents.document_generator.agentic_policy import should_escalate_agentic
+from app.agents.document_generator.legal_validation import (
+    build_citation_checks,
+    build_clause_traceability,
+    build_validation_report,
+    compute_confidence_score,
+)
 from app.agents.document_generator.ghost_typing import ghost_typing_engine
 from app.integrations.indiankanoon.data_processor import IndianKanoonDataProcessor
+from app.services.retrieval_service import RetrievalService
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+def _build_retrieval_query(case_facts: dict) -> str:
+    """
+    Build a compact legal-retrieval query from available user and extracted facts.
+    """
+    query_parts = [
+        case_facts.get("prompt"),
+        case_facts.get("query"),
+        case_facts.get("instructions"),
+        case_facts.get("issue"),
+        case_facts.get("statute"),
+        case_facts.get("location"),
+    ]
+    query = " ".join([str(p).strip() for p in query_parts if p]).strip()
+    return query
 
 
-@router.post("/generate", response_model=schemas_document.Document)
+def _select_retrieval_strategy(query: str, case_facts: dict) -> dict:
+    """
+    Route retrieval mode based on query/facts complexity.
+    """
+    if not query:
+        return {"strategy": "dense", "k": 0, "reason": "empty_query"}
+
+    token_count = len(query.split())
+    has_multiple_files = len(case_facts.get("file_ids", []) or []) > 1
+    citation_like = bool(
+        re.search(r"\b(section|article)\s+\d+", query, re.IGNORECASE)
+        or re.search(r"\bact,\s*\d{4}\b", query, re.IGNORECASE)
+    )
+    if citation_like or has_multiple_files or token_count > 18:
+        return {"strategy": "hybrid", "k": 8, "reason": "complex_or_citation_heavy_query"}
+    return {"strategy": "dense", "k": 5, "reason": "default_dense_path"}
+
+
+def _fetch_grounded_legal_context(query: str, strategy: str = "dense", k: int = 5) -> tuple[str, list[dict]]:
+    """
+    Retrieve supporting legal snippets and source metadata for generation grounding.
+    """
+    if not query:
+        return "", []
+
+    try:
+        retrieval_service = RetrievalService()
+        docs = retrieval_service.retrieve_documents(query=query, strategy=strategy, k=k)
+    except Exception as e:
+        logger.warning("Retrieval failed for strategy=%s: %s", strategy, e)
+        return "", []
+
+    context_blocks = []
+    sources = []
+    for idx, doc in enumerate(docs or []):
+        content = (doc.page_content or "").strip()
+        if not content:
+            continue
+        snippet = content[:1200]
+        metadata = doc.metadata or {}
+        title = metadata.get("title") or "Unknown Title"
+        source = metadata.get("source") or "Unknown Source"
+        url = metadata.get("url")
+        header = f"Source {idx + 1}: {title} ({source})"
+        if url:
+            header += f" - {url}"
+
+        context_blocks.append(f"{header}\n{snippet}")
+        sources.append(
+            {
+                "title": title,
+                "source": source,
+                "url": url,
+                "id": metadata.get("doc_id") or metadata.get("tid"),
+            }
+        )
+
+    return "\n\n".join(context_blocks), sources
+
+
+@router.post("/generate", response_model=schemas_document.GeneratedDocumentResponse)
 async def generate_document(
     *,
     db: Session = Depends(deps.get_db),
@@ -55,7 +140,7 @@ async def generate_document(
                 if text:
                    all_extracted_text += f"\n--- Evidence from {fid} ---\n{text}\n"
             except Exception as e:
-                print(f"Failed to process file {fid}: {e}")
+                logger.warning("Failed to process evidence file %s: %s", fid, e)
             finally:
                 if local_path:
                     storage.delete_local_file(local_path)
@@ -70,6 +155,18 @@ async def generate_document(
                 if k not in merged_facts or not merged_facts[k]:
                     merged_facts[k] = v
 
+    # Retrieve supporting legal context for grounding
+    retrieval_query = _build_retrieval_query(merged_facts)
+    retrieval_strategy = _select_retrieval_strategy(retrieval_query, merged_facts)
+    legal_context, legal_sources = _fetch_grounded_legal_context(
+        retrieval_query,
+        strategy=retrieval_strategy["strategy"],
+        k=retrieval_strategy["k"],
+    )
+    if legal_context:
+        merged_facts["retrieved_legal_context"] = legal_context
+        merged_facts["retrieved_legal_sources"] = legal_sources
+
     try:
         generated_content = await assembly_engine.assemble_document(
             template=template.content,
@@ -83,7 +180,78 @@ async def generate_document(
     doc_create = schemas_document.DocumentCreate(title=doc_in.title, content=generated_content)
     # Save with owner_id using the specialized method
     document = crud.document.create_with_owner(db, obj_in=doc_create, owner_id=current_user.id)
-    return document
+
+    retrieval_sources = legal_sources if retrieval_query else []
+    clause_traceability = build_clause_traceability(generated_content, retrieval_sources)
+    citation_checks = build_citation_checks(generated_content)
+    validation_report = build_validation_report(generated_content, retrieval_sources)
+    confidence_score = compute_confidence_score(validation_report, citation_checks)
+
+    agentic_decision = should_escalate_agentic(
+        case_facts=merged_facts,
+        retrieval_sources=retrieval_sources,
+        validation_report=validation_report,
+        confidence_score=confidence_score,
+    )
+    agentic_decision["retrieval_strategy"] = retrieval_strategy
+    agentic_decision["executed"] = False
+    agentic_decision["attempts"] = 0
+    agentic_decision["fallback_to_deterministic"] = False
+
+    if agentic_decision.get("escalate"):
+        # Bounded one-step remediation pass to avoid runaway loops.
+        max_attempts = int(agentic_decision.get("step_budget", 1))
+        remediation_facts = merged_facts.copy()
+        remediation_facts["agentic_repair_instructions"] = (
+            "Prioritize legal citations and resolve validation issues from prior draft."
+        )
+        for _ in range(max_attempts):
+            agentic_decision["executed"] = True
+            agentic_decision["attempts"] += 1
+            try:
+                regenerated_content = await assembly_engine.assemble_document(
+                    template=template.content,
+                    case_facts=remediation_facts,
+                    title=doc_in.title,
+                )
+                regenerated_citation_checks = build_citation_checks(regenerated_content)
+                regenerated_validation_report = build_validation_report(regenerated_content, retrieval_sources)
+                regenerated_confidence_score = compute_confidence_score(
+                    regenerated_validation_report, regenerated_citation_checks
+                )
+                # Accept improvement only if deterministic score increases or validation passes.
+                is_improved = (
+                    regenerated_confidence_score > confidence_score
+                    or (
+                        regenerated_validation_report.get("passed")
+                        and not validation_report.get("passed")
+                    )
+                )
+                if is_improved:
+                    generated_content = regenerated_content
+                    citation_checks = regenerated_citation_checks
+                    validation_report = regenerated_validation_report
+                    confidence_score = regenerated_confidence_score
+                    clause_traceability = build_clause_traceability(generated_content, retrieval_sources)
+            except Exception:
+                agentic_decision["fallback_to_deterministic"] = True
+                break
+
+    # Return persisted document fields + retrieval provenance for transparency
+    return {
+        "id": document.id,
+        "title": document.title,
+        "content": document.content,
+        "owner_id": document.owner_id,
+        "created_at": document.created_at,
+        "updated_at": document.updated_at,
+        "retrieval_sources": retrieval_sources,
+        "clause_traceability": clause_traceability,
+        "validation_report": validation_report,
+        "confidence_score": confidence_score,
+        "citation_checks": citation_checks,
+        "agentic_decision": agentic_decision,
+    }
 
 
 @router.post("/ghost-suggest", response_model=GhostSuggestResponse)

@@ -49,14 +49,14 @@ settings = Settings()
 
 HYBRID_SEARCH_CONFIG = {
     "fusion_algorithm": "reciprocal_rank_fusion",
-    "keyword_alpha": 0.7, # Weight for BM25 in keyword-heavy queries
-    "semantic_alpha": 0.3, # Weight for BM25 in semantic queries
-    "k": 60, # For RRF
+    "keyword_weight": 0.6,  # Sparse/BM25 retriever weight
+    "semantic_weight": 0.4,  # Dense vector retriever weight
+    "rrf_k": 60,  # RRF constant
+    "top_k": 5,  # default retrieval depth
     "boost_factors": {
-        "jurisdiction": "US",
+        "jurisdiction": "India",
         "jurisdiction_boost": 1.5,
         "recency_days": 365,
         "recency_boost": 1.2
     }
 }
-
