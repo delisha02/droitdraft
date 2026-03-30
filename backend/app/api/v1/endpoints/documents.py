@@ -8,6 +8,7 @@ from app.schemas import document as schemas_document
 from app.schemas.document import DocumentGenerate, GhostSuggestRequest, GhostSuggestResponse
 from app.api import deps
 from app.agents.document_generator.assembly_engine import assembly_engine
+from app.agents.document_generator.agentic_policy import should_escalate_agentic
 from app.agents.document_generator.legal_validation import (
     build_citation_checks,
     build_clause_traceability,
@@ -162,6 +163,55 @@ async def generate_document(
     validation_report = build_validation_report(generated_content, retrieval_sources)
     confidence_score = compute_confidence_score(validation_report, citation_checks)
 
+    agentic_decision = should_escalate_agentic(
+        case_facts=merged_facts,
+        retrieval_sources=retrieval_sources,
+        validation_report=validation_report,
+        confidence_score=confidence_score,
+    )
+    agentic_decision["executed"] = False
+    agentic_decision["attempts"] = 0
+    agentic_decision["fallback_to_deterministic"] = False
+
+    if agentic_decision.get("escalate"):
+        # Bounded one-step remediation pass to avoid runaway loops.
+        max_attempts = int(agentic_decision.get("step_budget", 1))
+        remediation_facts = merged_facts.copy()
+        remediation_facts["agentic_repair_instructions"] = (
+            "Prioritize legal citations and resolve validation issues from prior draft."
+        )
+        for _ in range(max_attempts):
+            agentic_decision["executed"] = True
+            agentic_decision["attempts"] += 1
+            try:
+                regenerated_content = await assembly_engine.assemble_document(
+                    template=template.content,
+                    case_facts=remediation_facts,
+                    title=doc_in.title,
+                )
+                regenerated_citation_checks = build_citation_checks(regenerated_content)
+                regenerated_validation_report = build_validation_report(regenerated_content, retrieval_sources)
+                regenerated_confidence_score = compute_confidence_score(
+                    regenerated_validation_report, regenerated_citation_checks
+                )
+                # Accept improvement only if deterministic score increases or validation passes.
+                is_improved = (
+                    regenerated_confidence_score > confidence_score
+                    or (
+                        regenerated_validation_report.get("passed")
+                        and not validation_report.get("passed")
+                    )
+                )
+                if is_improved:
+                    generated_content = regenerated_content
+                    citation_checks = regenerated_citation_checks
+                    validation_report = regenerated_validation_report
+                    confidence_score = regenerated_confidence_score
+                    clause_traceability = build_clause_traceability(generated_content, retrieval_sources)
+            except Exception:
+                agentic_decision["fallback_to_deterministic"] = True
+                break
+
     # Return persisted document fields + retrieval provenance for transparency
     return {
         "id": document.id,
@@ -175,6 +225,7 @@ async def generate_document(
         "validation_report": validation_report,
         "confidence_score": confidence_score,
         "citation_checks": citation_checks,
+        "agentic_decision": agentic_decision,
     }
 
 

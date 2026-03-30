@@ -32,9 +32,9 @@
 - [x] Confidence scoring and citation checks.
 
 ## Phase 3 — Targeted Agentic Mode
-- [ ] Policy-gated agentic escalation for complex cases only.
-- [ ] Step budgets, circuit breakers, fallback to deterministic RAG.
+- [x] Policy-gated agentic escalation for complex cases only.
+- [x] Step budgets, circuit breakers, fallback to deterministic RAG.
 
 ## Immediate next implementation ticket
-1. Begin Phase 3: policy-gated agentic escalation with explicit step budgets/circuit breakers.
+1. Add multi-strategy retrieval routing (query-type aware sparse/dense/hybrid selection) before generation.
 2. Standardize endpoint logging/error handling (`print` -> structured logger) in generation/retrieval paths.
