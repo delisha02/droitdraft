@@ -4,6 +4,7 @@ This file contains the Pydantic schemas for the Document model.
 
 from pydantic import BaseModel
 from datetime import datetime
+from typing import Any
 
 
 class DocumentBase(BaseModel):
@@ -31,6 +32,10 @@ class DocumentInDBBase(DocumentBase):
 
 class Document(DocumentInDBBase):
     pass
+
+
+class GeneratedDocumentResponse(Document):
+    retrieval_sources: list[dict[str, Any]] = []
 
 
 class DocumentGenerate(BaseModel):

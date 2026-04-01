@@ -1,9 +1,83 @@
-from langchain_community.retrievers.bm25 import BM25Retriever
-from langchain_classic.retrievers.ensemble import EnsembleRetriever
-from langchain_core.documents import Document
+try:
+    from langchain_community.retrievers.bm25 import BM25Retriever  # type: ignore
+except Exception:
+    class BM25Retriever:  # type: ignore[misc]
+        @classmethod
+        def from_documents(cls, _documents):
+            raise ImportError("langchain_community is required for BM25Retriever")
+
+try:
+    from langchain_core.documents import Document  # type: ignore
+except Exception:
+    from typing import Any as Document  # type: ignore
 from typing import List
-from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import SentenceTransformerEmbeddings
+try:
+    from langchain_community.vectorstores import Chroma  # type: ignore
+except Exception:
+    class Chroma:  # type: ignore[misc]
+        @classmethod
+        def from_documents(cls, _documents, _embeddings):
+            raise ImportError("langchain_community is required for Chroma")
+
+        def __init__(self, *args, **kwargs):
+            raise ImportError("langchain_community is required for Chroma")
+
+try:
+    from langchain_community.embeddings import SentenceTransformerEmbeddings  # type: ignore
+except Exception:
+    class SentenceTransformerEmbeddings:  # type: ignore[misc]
+        def __init__(self, *args, **kwargs):
+            raise ImportError("langchain_community is required for embeddings")
+
+try:
+    from langchain_classic.retrievers.ensemble import EnsembleRetriever  # type: ignore
+except Exception:
+    class EnsembleRetriever:  # type: ignore[misc]
+        """
+        Lightweight fallback ensemble retriever used when langchain-classic
+        is unavailable in the runtime environment.
+        """
+        def __init__(self, retrievers: list, weights: list[float] | None = None):
+            self.retrievers = retrievers
+            self.weights = weights or [1.0 for _ in retrievers]
+
+        def invoke(self, query: str, *args, **kwargs):
+            seen = set()
+            merged = []
+            for retriever in self.retrievers:
+                for doc in retriever.invoke(query):
+                    doc_key = (getattr(doc, "page_content", None), str(getattr(doc, "metadata", {})))
+                    if doc_key not in seen:
+                        seen.add(doc_key)
+                        merged.append(doc)
+            return merged
+
+def get_hybrid_retriever(
+    documents: List[Document],
+    embedding_model: str = "all-MiniLM-L6-v2",
+    k: int = 5,
+) -> EnsembleRetriever:
+    """
+    Builds an in-memory hybrid retriever using dense + sparse retrieval.
+
+    This is primarily used for testing and local experimentation where a
+    list of LangChain `Document` objects is already available.
+    """
+    embeddings = SentenceTransformerEmbeddings(model_name=embedding_model)
+
+    # Dense retriever via vector store
+    vectorstore = Chroma.from_documents(documents, embeddings)
+    vector_retriever = vectorstore.as_retriever(search_kwargs={"k": k})
+
+    # Sparse retriever via BM25
+    bm25_retriever = BM25Retriever.from_documents(documents)
+    bm25_retriever.k = k
+
+    # Fuse results from both retrievers
+    return EnsembleRetriever(
+        retrievers=[bm25_retriever, vector_retriever],
+        weights=[0.5, 0.5]
+    )
 
 def get_hybrid_retriever(
     documents: List[Document],

@@ -16,14 +16,16 @@ CORE PRINCIPLES:
 
 def create_generation_prompt(case_facts: Dict[str, Any], template: str) -> str:
     """Creates a prompt for the LLM to generate a legal document."""
-        import logging
-        logger = logging.getLogger(__name__)
+    import logging
+    logger = logging.getLogger(__name__)
     
     # Format facts more intelligently
     facts_lines = []
     for key, value in case_facts.items():
         if key == "file_ids": continue # Skip raw IDs
         if key == "evidence_text": continue # Handle separately
+        if key == "retrieved_legal_context": continue # Handle separately
+        if key == "retrieved_legal_sources": continue # Handle separately
         
         if isinstance(value, list):
             facts_lines.append(f"**{key.replace('_', ' ').title()}:**")
@@ -44,6 +46,10 @@ def create_generation_prompt(case_facts: Dict[str, Any], template: str) -> str:
     if case_facts.get("evidence_text"):
         evidence_section = f"\n**Source Evidence (Grounded Information):**\n{case_facts['evidence_text']}\n"
 
+    legal_context_section = ""
+    if case_facts.get("retrieved_legal_context"):
+        legal_context_section = f"\n**Grounded Legal Context (Retrieved):**\n{case_facts['retrieved_legal_context']}\n"
+
     # Extract specific user query if exists
     user_query = case_facts.get("query") or case_facts.get("user_query") or case_facts.get("instructions")
     user_query_section = ""
@@ -56,6 +62,7 @@ def create_generation_prompt(case_facts: Dict[str, Any], template: str) -> str:
 **Case Facts & Data Points:**
 {facts_str}
 {evidence_section}
+{legal_context_section}
 {user_query_section}
 
 **Legal Template (Structural Blueprint):**
@@ -75,5 +82,5 @@ def create_generation_prompt(case_facts: Dict[str, Any], template: str) -> str:
 
 **Generated Legal Draft:**
 """
-        logger.info(f"[Step 7] Prompt assembled for LLM. Prompt preview: {prompt[:300]}...")
+    logger.info(f"[Step 7] Prompt assembled for LLM. Prompt preview: {prompt[:300]}...")
     return prompt

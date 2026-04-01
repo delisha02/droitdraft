@@ -8,6 +8,7 @@
 
 ### 0.1 Interface alignment
 - [x] Add missing `get_hybrid_retriever(...)` implementation in legal research retrievers module.
+- [x] Introduce retrieval service abstraction to centralize retriever construction.
 - [ ] Align hybrid retriever behavior and defaults with product requirements (weights, k, fusion policy).
 
 ### 0.2 Simulation and placeholder audit
@@ -16,13 +17,13 @@
 - [ ] Produce `cleanup_audit.md` with keep/remove/replace decisions.
 
 ### 0.3 Test baseline
-- [ ] Run focused retriever tests and fix regressions.
+- [x] Run focused retriever tests and fix regressions.
 - [ ] Add contract tests for retriever output schema.
 - [ ] Add smoke test for generation route with retrieval disabled/enabled flags.
 
 ## Phase 1 — Retrieval in Draft Generation
-- [ ] Inject retrieval stage into `/documents/generation/generate`.
-- [ ] Build grounded prompt block with source metadata.
+- [x] Inject retrieval stage into `/documents/generation/generate`.
+- [x] Build grounded prompt block with source metadata.
 - [ ] Return draft + sources in response.
 
 ## Phase 2 — Clause + Validation
@@ -35,5 +36,5 @@
 - [ ] Step budgets, circuit breakers, fallback to deterministic RAG.
 
 ## Immediate next implementation ticket
-1. Verify hybrid retriever with unit tests.
-2. Introduce retrieval service abstraction used by both research and generation paths.
+1. Add contract tests for generation response schema (including `retrieval_sources`).
+2. Align hybrid retriever defaults/weights and expose config controls.

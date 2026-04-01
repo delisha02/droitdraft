@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Optional
 
 from app.agents.legal_research.document_store import DocumentStore
 from app.agents.document_generator.llm_client import llm_client
-from app.agents.legal_research.retrievers import get_persistent_retriever
+from app.services.retrieval_service import RetrievalService
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,8 @@ class LegalResearchAgent:
 
     def __init__(self, persist_directory: str = "chroma_db"):
         self.store = DocumentStore(persist_directory=persist_directory)
-        self.retriever = get_persistent_retriever(persist_directory=persist_directory)
+        retrieval_service = RetrievalService(persist_directory=persist_directory)
+        self.retriever = retrieval_service.get_persistent_retriever()
 
     async def answer_query(self, query: str, k: int = 5) -> Dict[str, Any]:
         """
