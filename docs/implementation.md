@@ -178,13 +178,18 @@ cos_sim(q, d₂) = 0.77
 **Input:**
 - Extracted Facts JSON
 - Top-k retrieved context chunks
+- Legal Template (Structural Blueprint)
 
 **Transformation:**
 Prompt template is filled:
 ```
-INSTRUCTIONS: Draft a legal notice using the facts and legal context below.
-FACTS: {Facts JSON}
-CONTEXT: {Top-k Chunks}
+INSTRUCTIONS: Draft a legal notice...
+**Case Facts & Data Points:**
+{Facts JSON}
+**Source Evidence (Grounded Information):**
+{Top-k Chunks}
+**Legal Template (Structural Blueprint):**
+{Template}
 ```
 Passed to LLM for generation.
 
@@ -193,12 +198,37 @@ Passed to LLM for generation.
 flowchart LR
     FJ["Facts JSON"] --> |"Prompt Assembly"| PR["Prompt"]
     CTX["Top-k Chunks"] --> PR
+    TMP["Template"] --> PR
     PR --> |"LLM"| OUT["Draft Notice"]
 ```
 
 **Output (Draft Excerpt):**
 ```
-"Dear Sir/Madam,\n\nYou have issued a cheque dated 05 Jan 2025 for ₹2,50,000, which was returned unpaid due to insufficient funds. As per Section 138 of the NI Act, you are hereby called upon to pay the amount within 15 days of receipt of this notice..."
+Legal Notice (Civil/Property)
+Drafting Date: March 11, 2026
+
+LEGAL NOTICE
+
+To,
+{{ recipient_name }}
+{{ recipient_address }}
+
+Subject: Notice under Section 138 of the Negotiable Instruments Act, 1881 for Dishonour of Cheque
+
+Dear Sir/Madam,
+
+Under instructions from my client, {{ client_name }}, residing at {{ client_address }}, I hereby serve you with the following legal notice:
+
+1. My client is the owner/aggrieved party in the matter of a cheque dated 05 Jan 2025, bearing the amount of ₹2,50,000, which was dishonoured due to insufficient funds.
+2. FACTUAL BACKGROUND: On 05 Jan 2025, you issued a cheque in favour of my client for ₹2,50,000. However, when the cheque was presented for payment, it was returned with a memo stating 'insufficient funds' as the reason for dishonour, thereby attracting the provisions of Section 138 of the Negotiable Instruments Act, 1881.
+3. GRIEVANCE: That you have failed to make good the payment of ₹2,50,000, despite the cheque being dishonoured, which constitutes an offence under Section 138 of the Negotiable Instruments Act, 1881.
+4. DEMAND: You are hereby called upon to pay the said amount of ₹2,50,000, along with interest and costs, within 15 days from the receipt of this notice, as mandated by the provisions of Section 138 of the Negotiable Instruments Act, 1881, read with Section 142 of the Negotiable Instruments Act, 1881.
+5. CAUSE OF ACTION: Failing which, my client has given me clear instructions to initiate civil and criminal proceedings against you, pursuant to Section 138 of the Negotiable Instruments Act, 1881, and Section 420 of the Indian Penal Code, 1860, at your cost and consequences.
+
+Yours faithfully,
+
+{{ lawyer_name }}
+Advocate, Mumbai
 ```
 
 ---

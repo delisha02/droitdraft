@@ -36,7 +36,7 @@ def test_get_hybrid_retriever_builds_dense_and_sparse_retrievers():
         MockBM25.from_documents.assert_called_once_with(docs)
         assert mock_bm25.k == 3
         assert len(retriever.retrievers) == 2
-        assert retriever.weights == [0.5, 0.5]
+        assert retriever.weights == [0.6, 0.4]
 
 
 def test_ensemble_retriever_contract_has_invoke():

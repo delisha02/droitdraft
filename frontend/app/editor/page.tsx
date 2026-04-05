@@ -458,8 +458,8 @@ function EditorContent() {
       const selection = window.getSelection();
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
-        // Only show if cursor is at the end of a node
-        if (range.collapsed) {
+        // Only show if cursor is at the end of a node and specifically within our editor.
+        if (range.collapsed && editorRef.current.contains(range.commonAncestorContainer)) {
           range.insertNode(ghostSpan);
         }
       }
@@ -477,12 +477,16 @@ function EditorContent() {
       const selection = window.getSelection();
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
-        const textNode = window.document.createTextNode(text);
-        range.insertNode(textNode);
-        range.setStartAfter(textNode);
-        range.collapse(true);
-        selection.removeAllRanges();
-        selection.addRange(range);
+        
+        // Ensure the range is inside our editor before inserting text
+        if (editorRef.current.contains(range.commonAncestorContainer)) {
+          const textNode = window.document.createTextNode(text);
+          range.insertNode(textNode);
+          range.setStartAfter(textNode);
+          range.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
       }
 
       clearSuggestion();
@@ -674,13 +678,10 @@ function EditorContent() {
     } else if (!docId && templateData) {
       // Load template for new document
       console.log("Syncing template to editor:", templateData.name);
-      const currentDate = new Date().toLocaleDateString('en-GB'); // DD/MM/YYYY
-      const processedContent = templateData.content.replace(/\{\{\s*drafting_date\s*\}\}/g, currentDate);
-      const finalHtml = formatToHtml(processedContent);
-      editorRef.current.innerHTML = finalHtml;
+      editorRef.current.innerHTML = "";
       updateDocument({
         title: templateData.name,
-        content: finalHtml,
+        content: "",
         type: docType
       });
       hasSyncedRef.current = true;
@@ -754,6 +755,12 @@ function EditorContent() {
   const applyFactsToDraft = (facts: any) => {
     if (!editorRef.current) return;
     let content = editorRef.current.innerHTML;
+    
+    if ((!content || content.trim() === "") && templateData?.content) {
+      const currentDate = new Date().toLocaleDateString('en-GB');
+      const processedContent = templateData.content.replace(/\{\{\s*drafting_date\s*\}\}/g, currentDate);
+      content = formatToHtml(processedContent);
+    }
 
     // Map extracted facts to common placeholders
     const mappings: { [key: string]: string } = {};

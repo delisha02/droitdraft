@@ -8,6 +8,7 @@ class DroitAgentState(TypedDict):
     query: str
     case_facts: dict
     template_id: Optional[int]
+    document_id: Optional[str]
     
     # Processed data
     template_content: str

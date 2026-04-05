@@ -34,13 +34,18 @@ class DocumentAssemblyEngine:
 
         # 4. Document consistency checking
         consistency_errors = check_consistency(combined_sections)
+        import logging
         if consistency_errors:
-            # For now, we'll just raise an exception. 
-            # In a real application, you might want to handle this more gracefully.
-            raise ValueError(f"Consistency errors found: {', '.join(consistency_errors)}")
+            # Prevent aborting generation and instead log a warning
+            logging.getLogger(__name__).warning(f"Consistency errors found (unfilled placeholders): {', '.join(consistency_errors)}")
+
+        # Convert [Placeholders] format to {{ Placeholders }} format in the text to match 
+        # frontend syntax mapping if the LLM outputted brackets instead.
+        import re
+        combined_sections = re.sub(r'\[(.*?)\]', r'{{ \1 }}', combined_sections)
 
         # 5. Final document assembly
-        final_document = format_document(title, sections)
+        final_document = format_document(title, [combined_sections])
 
         return final_document
 

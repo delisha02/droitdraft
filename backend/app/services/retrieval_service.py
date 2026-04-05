@@ -1,3 +1,4 @@
+from inspect import signature
 from typing import List, Optional
 
 from langchain_classic.retrievers.ensemble import EnsembleRetriever
@@ -8,6 +9,7 @@ from app.agents.legal_research.retrievers import (
     get_hybrid_retriever,
     get_persistent_retriever,
 )
+from app.core.config import HYBRID_SEARCH_CONFIG
 
 
 class RetrievalService:
@@ -34,10 +36,59 @@ class RetrievalService:
         documents: List[Document],
         embedding_model: str = "all-MiniLM-L6-v2",
         k: int = 5,
+        keyword_weight: Optional[float] = None,
+        semantic_weight: Optional[float] = None,
     ) -> EnsembleRetriever:
-        return get_hybrid_retriever(
-            documents=documents,
-            embedding_model=embedding_model,
-            k=k,
+        resolved_keyword_weight = (
+            keyword_weight
+            if keyword_weight is not None
+            else HYBRID_SEARCH_CONFIG.get("keyword_weight", 0.6)
+        )
+        resolved_semantic_weight = (
+            semantic_weight
+            if semantic_weight is not None
+            else HYBRID_SEARCH_CONFIG.get("semantic_weight", 0.4)
         )
 
+        # Compatibility: pass weights only if lower-level helper supports them.
+        helper_params = signature(get_hybrid_retriever).parameters
+        kwargs = {
+            "documents": documents,
+            "embedding_model": embedding_model,
+            "k": k,
+        }
+        if "keyword_weight" in helper_params:
+            kwargs["keyword_weight"] = resolved_keyword_weight
+        if "semantic_weight" in helper_params:
+            kwargs["semantic_weight"] = resolved_semantic_weight
+
+        return get_hybrid_retriever(**kwargs)
+
+    def retrieve_documents(
+        self,
+        query: str,
+        strategy: str = "dense",
+        k: int = 5,
+    ) -> List[Document]:
+        """
+        Route retrieval by strategy with safe fallback to dense retrieval.
+
+        Strategies:
+        - dense: persistent vectorstore retrieval
+        - hybrid: dense candidate fetch + in-memory hybrid rerank
+        """
+        dense_retriever = self.get_persistent_retriever(k=k)
+        dense_docs = dense_retriever.invoke(query) or []
+
+        if strategy != "hybrid":
+            return dense_docs
+
+        if not dense_docs:
+            return []
+
+        try:
+            hybrid_retriever = self.get_hybrid_retriever(documents=dense_docs, k=k)
+            return hybrid_retriever.invoke(query) or dense_docs
+        except Exception:
+            # Guardrail: never fail request path due to hybrid rerank issues.
+            return dense_docs
