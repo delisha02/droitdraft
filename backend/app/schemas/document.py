@@ -36,11 +36,14 @@ class Document(DocumentInDBBase):
 
 class GeneratedDocumentResponse(Document):
     retrieval_sources: list[dict[str, Any]] = []
+<<<<<<< HEAD
     clause_traceability: list[dict[str, Any]] = []
     validation_report: dict[str, Any] = {}
     confidence_score: float = 0.0
     citation_checks: dict[str, Any] = {}
     agentic_decision: dict[str, Any] = {}
+=======
+>>>>>>> origin/main
 
 
 class DocumentGenerate(BaseModel):

@@ -1,3 +1,4 @@
+from inspect import signature
 from typing import List, Optional
 
 from langchain_classic.retrievers.ensemble import EnsembleRetriever
@@ -48,13 +49,20 @@ class RetrievalService:
             if semantic_weight is not None
             else HYBRID_SEARCH_CONFIG.get("semantic_weight", 0.4)
         )
-        return get_hybrid_retriever(
-            documents=documents,
-            embedding_model=embedding_model,
-            k=k,
-            keyword_weight=resolved_keyword_weight,
-            semantic_weight=resolved_semantic_weight,
-        )
+
+        # Compatibility: pass weights only if lower-level helper supports them.
+        helper_params = signature(get_hybrid_retriever).parameters
+        kwargs = {
+            "documents": documents,
+            "embedding_model": embedding_model,
+            "k": k,
+        }
+        if "keyword_weight" in helper_params:
+            kwargs["keyword_weight"] = resolved_keyword_weight
+        if "semantic_weight" in helper_params:
+            kwargs["semantic_weight"] = resolved_semantic_weight
+
+        return get_hybrid_retriever(**kwargs)
 
     def retrieve_documents(
         self,
@@ -64,6 +72,7 @@ class RetrievalService:
     ) -> List[Document]:
         """
         Route retrieval by strategy with safe fallback to dense retrieval.
+
         Strategies:
         - dense: persistent vectorstore retrieval
         - hybrid: dense candidate fetch + in-memory hybrid rerank
