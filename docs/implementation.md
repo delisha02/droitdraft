@@ -7,21 +7,19 @@ The DroitDraft system leverages a combination of deterministic algorithms (for r
 ### 6.1.1 Retrieval-Augmented Generation (RAG)
 We implemented a standard RAG pipeline to ground the AI's generation in verified legal data, preventing hallucinations.
 
-*   **Chunking Methodology**: *Recursive Character Text Splitting*
-    *   **Algorithm**: Documents are split into chunks of **1000 characters** with a **200-character overlap**.
+*   **Chunking Methodology**: *Simple Word-based Splitting*
+    *   **Algorithm**: Documents are split into chunks of **512 words** with a **50-word overlap**.
     *   **Rationale**: Legal statutes often have cross-references. Overlap ensures that a sentence split across chunks doesn't lose context.
 *   **Embedding Methodology**: *Dense Vector Mapping*
     *   **Model**: We use **Sentence-BERT (all-MiniLM-L6-v2)** to map legal text to a **384-dimensional dense vector space**.
     *   **Similarity Metric**: We use **Cosine Similarity** to calculate the angle between the Query Vector and Document Vectors. The chunks with the highest cosine similarity score (closest to 1.0) are retrieved as relevant context.
 
-### 6.1.2 Hybrid Search (Planned/Future Work)
-*Note: The current implementation uses only dense retrieval (Sentence-BERT + cosine similarity). Hybrid search, BM25, and Reciprocal Rank Fusion (RRF) are not yet implemented in the pipeline. The following is a conceptual description for future development:*
+### 6.1.2 Hybrid Search (Implemented)
+*Note: The current implementation uses an integrated hybrid search strategy combining dense and sparse retrieval.*
 
 - **Dense Retrieval**: Uses Vector Similarity (captures semantic meaning like "bounced check"). *(Implemented)*
-- **Sparse Retrieval**: Uses **BM25 (Best Matching 25)** algorithm (captures exact keywords like "NI Act"). *(Planned)*
-- **Fusion Algorithm**: **Reciprocal Rank Fusion (RRF)**. Ranks from both methods are merged using:
-    $$ RRF(d) = \sum_{r \in R} \frac{1}{k + r(d)} $$
-    where $r(d)$ is the rank of document $d$ in the retrieved list $R$, and $k$ is a constant (typically 60). *(Planned)*
+- **Sparse Retrieval**: Uses **BM25 (Best Matching 25)** algorithm via the `EnsembleRetriever` to capture exact keywords like "NI Act". *(Implemented)*
+- **Fusion Algorithm**: **Reciprocal Rank Fusion (RRF)**. Ranks from both methods are merged based on the `HYBRID_SEARCH_CONFIG` (Keyword weight: 0.6, Semantic weight: 0.4). *(Implemented)*
 
 ### 6.1.3 Fact Extraction (NER via Generative AI)
 Instead of traditional CRF-based Named Entity Recognition (like Spacy), we use **Generative Extraction**.
@@ -31,7 +29,7 @@ Instead of traditional CRF-based Named Entity Recognition (like Spacy), we use *
 
 ### 6.1.4 Ghost Typing (Predictive Text)
 *   **Method**: **Causal Language Modeling (Next Token Prediction)**. The model predicts the most probable next sequence of tokens based on the current cursor position.
-*   **Optimization Algorithm**: **Debouncing**. To prevent server overload and UI jitter, the API request is only triggered after the user stops typing for **300ms**. If the user types again within this window, the previous request is cancelled.
+*   **Optimization Algorithm**: **Debouncing**. To prevent server overload and UI jitter, the API request is only triggered after the user stops typing for **1000ms**. If the user types again within this window, the previous request is cancelled.
 
 ## 6.2 Algorithm Walkthrough on One Example Query (Single Slide Narrative)
 
@@ -52,7 +50,7 @@ Draft a legal notice under Section 138 NI Act for cheque bounce. Cheque amount i
 ```
 
 **Transformation:**
-The query is passed to Llama 3 with a one-shot prompt and a strict JSON schema.
+The query is passed to Llama 3.3 with a one-shot prompt and a strict JSON schema.
 
 **Diagram:**
 ```mermaid
@@ -74,7 +72,7 @@ flowchart LR
 ---
 
 
-### Step 2: Passage Chunking (Recursive Character Text Splitting)
+### Step 2: Passage Chunking (Word-Based Splitting)
 
 **Input:**
 Relevant legal text (e.g., Section 138 NI Act):
@@ -83,41 +81,18 @@ Section 138. Dishonour of cheque for insufficiency, etc., of funds in the accoun
 ```
 
 **Transformation:**
-Split into overlapping chunks (L=1000, overlap=200):
+Split into overlapping word-based chunks (Width=512 words, overlap=50 words):
 
-**Equation:**
+**Logic:**
+For a text with $W$ total words:
 $$
-s_i = i \cdot (L - o),\; L=1000,\; o=200
+\text{Chunk}_n = \text{words}[n \cdot (512 - 50) : n \cdot (512 - 50) + 512]
 $$
-For the example query, the first two chunk start indices are:
-$$
-s_0 = 0 \cdot (1000 - 200) = 0 \\
-s_1 = 1 \cdot (1000 - 200) = 800
-$$
-
-**Example (using sample passage):**
-Suppose the legal passage is 1800 characters long. The chunking would produce:
-
-- Chunk 1: characters 0–999
-- Chunk 2: characters 800–1799
-
-So, for the example passage:
-```
-Chunk 1: "Section 138. Dishonour of cheque for insufficiency... payee may make a demand... [first 1000 chars]"
-Chunk 2: "...may make a demand for the payment... within 15 days of receiving information... [next 1000 chars, starting at char 800]"
-```
-
-**Diagram:**
-```mermaid
-flowchart LR
-    P["Legal Passage"] --> |"Chunking"| C1["Chunk 1"]
-    P --> |"Chunking (overlap)"| C2["Chunk 2"]
-```
 
 **Output (Chunks):**
 ```
-Chunk 1: "Section 138. Dishonour of cheque for insufficiency... payee may make a demand..."
-Chunk 2: "...may make a demand for the payment... within 15 days of receiving information..."
+Chunk 1: "Section 138. Dishonour of cheque for insufficiency... [first 512 words]"
+Chunk 2: "[words 462 to 974] ...may make a demand for the payment... within 15 days... [next 512 words]"
 ```
 
 ---
@@ -240,7 +215,7 @@ Advocate, Mumbai
 Partial draft: "You are hereby called upon to pay..."
 
 **Transformation:**
-After 300ms pause, next-token prediction is triggered.
+After 1000ms pause, next-token prediction is triggered.
 
 **Equation:**
 $$
@@ -250,7 +225,7 @@ $$
 **Diagram:**
 ```mermaid
 flowchart LR
-    PD["Partial Draft"] --> |"Debounce 300ms"| CLM["Causal LM"]
+    PD["Partial Draft"] --> |"Debounce 1000ms"| CLM["Causal LM (Llama 3.3)"]
     CLM --> SUG["Suggestion"]
 ```
 
@@ -259,7 +234,7 @@ Suggestion: "within 15 days of receipt of this notice."
 
 **Example (actual values):**
 - Partial draft: "You are hereby called upon to pay..."
-- After 300ms pause, model suggests: "within 15 days of receipt of this notice."
+- After 1000ms pause, model suggests: "within 15 days of receipt of this notice."
 
 ---
 

@@ -106,7 +106,7 @@ Every document in ChromaDB must have rich metadata for retrieval filtering:
 
 ## 6. Roadmap
 
-1.  **Immediate (Phase 1):** Ingest the "Core Statutes" (BNS, BNSS, BSA, CPC, Contract Act).
-2.  **Short-term (Phase 2):** Ingest `maharashtra_templates.json` properly into the vector store.
-3.  **Medium-term (Phase 3):** Bulk ingest 1000 landmark judgments from Indian Kanoon focusing on Civil/Criminal procedure.
-4.  **Long-term (Phase 4):** Automated daily sync with LiveLaw/Indian Kanoon for new judgments.
+1.  **Immediate (Phase 1):** Ingest the "Core Statutes" (BNS, BNSS, BSA, CPC, Contract Act). [COMPLETED]
+2.  **Short-term (Phase 2):** Ingest `maharashtra_templates.json` properly into the vector store. [COMPLETED]
+3.  **Medium-term (Phase 3):** Bulk ingest landmark judgments from Indian Kanoon focusing on Civil/Criminal procedure. [COMPLETED - Core catalog ingested]
+4.  **Long-term (Phase 4):** Automated daily sync with LiveLaw/Indian Kanoon for new judgments. [READY FOR PROD]

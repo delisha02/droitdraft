@@ -44,7 +44,9 @@ Leave the meeting with these confirmed:
    - Probate petition
    - Will
    - Sale deed
-   - Affidavit
+   - Letters of Administration
+   - Development Agreement
+   - General Contracts/Agreements
    - Other:
 
 2. Which tasks matter most for evaluation?

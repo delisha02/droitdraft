@@ -11,7 +11,7 @@ The testing strategy for DroitDraft focuses on validating the accuracy of legal 
 | **OS** | Windows 11 Pro / Ubuntu 22.04 LTS |
 | **Browser** | Chrome v120+, Edge v120+, Firefox v115+ |
 | **Database** | PostgreSQL 16 (Local Docker Container) |
-| **LLM Provider** | Groq API (Llama 3-70B) |
+| **LLM Provider** | Groq API (Llama 3.3-70B) |
 | **Network** | 100 Mbps stable connection (required for RAG) |
 
 ## 7.2 Test Cases
@@ -41,7 +41,7 @@ The testing strategy for DroitDraft focuses on validating the accuracy of legal 
 | :--- | :--- | :--- | :--- | :--- |
 | **TC-10** | **Template Selection** | Select "Sale Deed (Maharashtra)" | Editor opens with correct columns/clauses for Sale Deed. | Pass |
 | **TC-11** | **Auto-Populate Draft** | Extracted Facts (Buyer, Seller) | Names correctly inserted into Parties clause. Formatting retained. | Pass |
-| **TC-12** | **Ghost Typing Trigger** | Type "The Vendor agrees to" | Suggestion: "...indemnify the Purchaser against all claims." (Latency < 400ms) | Pass |
+| **TC-12** | **Ghost Typing Trigger** | Type "The Vendor agrees to" | Suggestion: "...indemnify the Purchaser against all claims." (E2E Latency < 1.5s) | Pass |
 | **TC-13** | **Missing Variable** | Template has `{{rent_amount}}` but fact is missing | System highlights the field in Red: "[ENTER RENT AMOUNT]". | Pass |
 
 ### 7.2.4 Retrieval-Augmented Generation (RAG)
@@ -60,19 +60,20 @@ The testing strategy for DroitDraft focuses on validating the accuracy of legal 
 | **TC-18** | **Draft Generation Speed** | Generate "Will" (5 pages) | Completed in < 10 seconds. | Pass |
 | **TC-19** | **Search Latency** | Complex Query (Hybrid Search) | Results retrieved in < 3 seconds. | Pass |
 | **TC-20** | **Concurrent Load** | 50 Users Drafting simultaneously | Server CPU < 80%, No dropped connections. | Pass |
-## 7.3 Automated Status Verification
+## 7.3 Automated Evaluation & Unit Tests
 
-For a quick check of the system's core components (PostgreSQL, ChromaDB, and Legal Research Agent), use the provided verification script.
+For a comprehensive evaluation of the system's performance metrics (Faithfulness, Relevancy, etc.), use the new evaluation harness.
 
-### 7.3.1 Running the Verification Script
+### 7.3.1 Running Evaluation Benchmarks
 
-1. Open a terminal in the project root.
+1. Open a terminal in the `backend` directory.
 2. Run the following command:
    ```powershell
-   .\.venv\Scripts\python.exe verify_project_status.py
+   python scripts/run_evaluation.py --dataset evaluation/sample_records.jsonl --format markdown
    ```
 
-### 7.3.2 What it verifies:
-- **PostgreSQL**: Integrity of User, Template, and Document counts.
-- **ChromaDB**: Total number of legal documents indexed for RAG.
-- **Legal Research Agent**: End-to-end test of query processing, context retrieval from ChromaDB, and LLM (Groq) answer generation.
+### 7.3.2 Running Unit Tests
+A suite of focused unit tests is available covering the `orchestrator`, `retrievers`, and `document_generator` components.
+```powershell
+pytest unit_tests/
+```

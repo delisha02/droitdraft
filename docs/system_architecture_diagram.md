@@ -10,7 +10,7 @@ flowchart LR
     APIClient["External API Client\nIn: API params\nOut: API payload"] --> GW
 
     FE --> GW["API Gateway\nIn: API payload\nOut: Routed req"]
-    GW --> BE["Backend API\nIn: Routed req\nOut: Workflow cmd"]
+    GW --> BE["Backend API (Port 8002)\nIn: Routed req\nOut: Workflow cmd"]
 
     BE --> Orch["Workflow Orchestrator\nIn: Workflow cmd\nOut: Agent tasks"]
     Orch --> DocProc["Document Processing Agent\nIn: Legal docs\nOut: Facts JSON"]
@@ -79,9 +79,7 @@ graph TB
             DocsEP[documents.py + documents_crud.py]
             TemplatesEP[templates.py]
             ResearchEP[research.py]
-            CorpusEP[corpus.py]
             OrchestratorEP[orchestrator.py]
-            LiveLawEP[livelaw.py]
         end
 
         Deps[Dependency Layer\napp/api/deps.py]
@@ -145,8 +143,6 @@ graph TB
             WorkflowDefs[workflow_definitions/*.json]
             StateMgr[state_manager.py]
             ExecMon[execution_monitor.py]
-            WorkflowBuilder[workflow_builder.py]
-            GraphCfg[graph_config.py]
         end
     end
 
@@ -331,5 +327,6 @@ flowchart LR
 ## 5) Notes
 
 - The architecture intentionally separates synchronous API paths from long-running and compute-heavy tasks via Celery/Redis workers.
+- The `WorkflowEngine` is the modern canonical entry point for multi-agent legal processes, replacing legacy graph builders.
 - The legal-research subsystem is coupled to ChromaDB for retrieval, while relational records and workflow state are persisted in PostgreSQL.
 - LLM access is centralized in backend services and agent-specific clients to support provider fallback and feature-specific prompting.

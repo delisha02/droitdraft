@@ -27,7 +27,7 @@
     *   **Output**: Functional legal draft in the Editor.
 *   **FR 2.3**: The system must support "Ghost Typing" (Context-Aware Autocomplete).
     *   **Input**: Current cursor context (last 1000 chars) + Extracted Facts.
-    *   **Process**: High-speed LLM inference (Groq/Llama3) to predict next tokens.
+    *   **Process**: High-speed LLM inference (Llama 3.3-70B) to predict next tokens with a **1000ms** debounce.
     *   **Output**: Inline shadow text suggestion (e.g., "...and the Licensee shall pay...").
 
 ### FR 3: Retrieval-Augmented Research (RAG)
@@ -36,7 +36,7 @@
     *   **Update Frequency**: Weekly sync with sources.
 *   **FR 3.2**: The system must answer legal queries with citations.
     *   **Input**: Natural language query (e.g., "Can a tenant be evicted without notice?").
-    *   **Process**: Hybrid Search (Vector + Keyword) -> LLM Synthesis -> Citation Linking.
+    *   **Process**: **Hybrid Search** (Dense Vector + BM25 Keyword) -> LLM Synthesis -> Citation Linking.
     *   **Output**: Answer with [1][2] citations linking to source text.
 
 ## 3.2 Non-Functional Requirements
@@ -51,8 +51,8 @@
 *   **NFR 2.3 - Access Control**: Role-Based Access Control (RBAC) ensuring users can only access their own case files.
 
 ### NFR 3: Performance & Scalability
-*   **NFR 3.1 - Drafting Latency**: Full document generation < 15 seconds.
-*   **NFR 3.2 - Ghost Typing Latency**: Suggestion appearance < 400ms (to feel "instant").
+*   **NFR 3.1 - Drafting Latency**: Full document generation < 20 seconds using high-speed inference.
+*   **NFR 3.2 - Ghost Typing Latency**: Suggestion appearance < 400ms (after the **1000ms** intentional user-pause).
 *   **NFR 3.3 - Concurrent Users**: Support 50+ concurrent drafting sessions on standard hardware.
 
 ---
@@ -64,9 +64,9 @@
 **Software Stack:**
 *   **Frontend**: Next.js 14 (React Server Components), Tailwind CSS, Shadcn UI.
 *   **Backend**: Python 3.11, FastAPI (Async), Celery (Task Queue).
-*   **Database**: PostgreSQL 16 (Relation), ChromaDB 0.4 (Vector), Redis 7 (Cache).
-*   **AI Orchestration**: LangChain 0.1, LlamaIndex (for pdf parsing).
-*   **OCR Engine**: Tesseract 5 / Google Cloud Vision API.
+*   **Database**: PostgreSQL 16 (Relation), ChromaDB 0.4+ (Vector), Redis 7 (Cache).
+*   **AI Models**: **Llama 3.3-70B** (via Groq), **all-MiniLM-L6-v2** (Embeddings).
+*   **OCR Engine**: Tesseract 5.
 
 **Hardware Specifications (Minimum Server Req):**
 *   **CPU**: 8 vCPUs (Intel Xeon / AMD EPYC) for vector calculations.

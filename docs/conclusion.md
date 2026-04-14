@@ -1,10 +1,10 @@
 # 8. Conclusion
 
 ## 8.1 Conclusion
-DroitDraft represents a significant leap forward in "Legal Tech 3.0," successfully bridging the gap between traditional legal drafting workflows and modern Generative AI capabilities. By implementing a sophisticated **Retrieval-Augmented Generation (RAG)** architecture specialized for the Indian legal context (specifically Maharashtra), the system addresses the three critical barriers to AI adoption in law: **Hallucinations, Lack of Jurisdiction, and Data Privacy**.
+DroitDraft represents a significant leap forward in "Legal Tech 3.0," successfully bridging the gap between traditional legal drafting workflows and modern Generative AI capabilities. By implementing a sophisticated **Hybrid Retrieval-Augmented Generation (RAG)** architecture (Dense + BM25) specialized for the Indian legal context (specifically Maharashtra), the system addresses the three critical barriers to AI adoption in law: **Hallucinations, Lack of Jurisdiction, and Data Privacy**.
 
 The project has achieved its primary objectives (as defined in the System Analysis):
-1.  **Context-Aware Automation**: The system successfully demonstrated the ability to extract facts from real-world evidence (e.g., Death Certificates) and populate complex legal templates (e.g., Probate Petitions) with >90% accuracy, reducing drafting time from hours to minutes.
+1.  **Context-Aware Automation**: The system successfully demonstrated the ability to extract facts from real-world evidence (e.g., Death Certificates) and populate complex legal templates (e.g., Probate Petitions) with high accuracy, reducing drafting time from hours to minutes.
 2.  **Verifiable Research**: The integration of a local vector database with *Indian Kanoon* and *LiveLaw* ensures that every legal citation generated is grounded in actual, clickable case law. This "Show Your Work" approach builds essential trust with legal professionals.
 3.  **User-Centric Design**: The "Ghost Typing" feature and interactive research sidebar provide a seamless experience that augments the lawyer's expertise rather than attempting to replace it.
 
@@ -43,4 +43,4 @@ The platform has extensive potential for future expansion to become a comprehens
 7.  **ChromaDB**. *The AI-native open-source embedding database*. Available at: `https://docs.trychroma.com/`
 8.  **FastAPI**. *High performance web framework for building APIs with Python*. Available at: `https://fastapi.tiangolo.com/`
 9.  **LangChain**. *Framework for developing applications powered by LLMs*. Available at: `https://python.langchain.com/`
-10. **Llama 3**. *Meta's Open Source LLM*. Available at: `https://llama.meta.com/`
+10. **Llama 3.3**. *Meta's latest State-of-the-Art Open Source LLM*. Available at: `https://llama.meta.com/`

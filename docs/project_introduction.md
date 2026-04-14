@@ -34,9 +34,9 @@ Legal professionals in Maharashtra face significant efficiency bottlenecks due t
     *   **Case Law**: 20+ years of reported judgments from the Bombay High Court and Supreme Court.
     *   **Rules**: Procedural manuals (Civil/Criminal Manuals).
 *   **Specialized Agentic Workflow**:
-    *   **The Researcher**: An agent dedicated to finding relevant laws.
-    *   **The Draftsman**: An agent trained on "Golden Templates" to generate the document structure.
-    *   **The Reviewer**: A separate agent (planned) to check for consistency and clauses.
+    *   **The Researcher**: An agent dedicated to finding relevant laws using **Hybrid RAG** (Dense + BM25).
+    *   **The Draftsman**: An agent trained on "Golden Templates" to generate the document structure via **Llama 3.3-70B (Groq)**.
+    *   **The Reviewer**: A separate agent to check for consistency and clauses.
 *   **Evidence-Based Automation**: An integrated OCR and Extraction pipeline that pulls facts directly from uploaded documents (IDs, previous deeds, death certificates), minimizing manual data entry errors.
 *   **"Ghost Flow" UX**: A novel user interface offering inline, autocomplete-style suggestions ("Ghost Typing") that allows lawyers to retain control while speeding up production by predicting standard legal phrasing.
 

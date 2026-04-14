@@ -11,7 +11,7 @@ DroitDraft follows a modern **Service-Oriented Architecture (SOA)** with a clear
     *   **Key Components**:
         *   `EditorProvider`: Manages the rich-text state and ghost typing overlays.
         *   `PDFViewer`: Integrated viewer for side-by-side evidence review.
-        *   `ChatInterface`: WebSocket connection for low-latency research queries.
+        *   `ChatInterface`: REST-based interaction for grounded research queries.
 2.  **Backend Layer (FastAPI)**:
     *   **Role**: Orchestrates all business logic, database interactions, and AI agent chaining.
     *   **Key Modules**:
@@ -42,7 +42,7 @@ graph TD
     Worker -->|OCR/Scraping| ExtServices[External APIs]
     end
     
-    Backend <-->|Inference| LLMAPI[LLM Provider - Groq]
+    Backend <-->|Inference| LLMAPI[LLM Provider - Groq (Llama 3.3)]
 ```
 
 ## 5.2 Models Explored
@@ -65,8 +65,8 @@ We evaluated three primary classes of models:
 2.  **Claude 3.5 Sonnet (Anthropic)**:
     *   *Pros*: Excellent nuance in writing, fewer refusals.
     *   *Cons*: Cost, strict rate limits.
-3.  **Llama 3-70B (Meta) on Groq LPU**:
-    *   *Pros*: **Blazing fast speed (~300 tokens/s)**, low cost, open weights allowing fine-tuning.
+3.  **Llama 3.3-70B (Meta) on Groq LPU**:
+    *   *Pros*: **Blazing fast speed (~300 tokens/s)**, low cost, state-of-the-art reasoning.
     *   *Cons*: Smaller context window (8k in early versions, now extended).
 
 For **Embeddings** (RAG), we explored:
@@ -76,14 +76,14 @@ For **Embeddings** (RAG), we explored:
 
 ### 5.2.3 Evaluation and Comparison
 
-| Feature | GPT-4o | Claude 3.5 | Llama 3 (Groq) | **Selected** |
+| Feature | GPT-4o | Claude 3.5 | Llama 3.3-70B (Groq) | **Selected** |
 | :--- | :--- | :--- | :--- | :--- |
-| **Legal Reasoning** | 92/100 | 94/100 | 85/100 | **Llama 3** (Adequate) |
-| **Speed (Tokens/s)** | ~40 | ~30 | **~300** | **Llama 3** (Winner) |
-| **Cost / 1M Tokens** | ~$5.00 | ~$3.00 | **<$0.70** | **Llama 3** (Winner) |
-| **Privacy Control** | Low | Medium | **High** | **Llama 3** (Winner) |
+| **Legal Reasoning** | 92/100 | 94/100 | 85/100 | **Llama 3.3-70B** |
+| **Speed (Tokens/s)** | ~40 | ~30 | **~300** | **Llama 3.3-70B** |
+| **Cost / 1M Tokens** | ~$5.00 | ~$3.00 | **<$0.70** | **Llama 3.3-70B** |
+| **Privacy Control** | Low | Medium | **High** | **Llama 3.3-70B** |
 
-*Decision*: We selected **Llama 3-70B running on Groq** as the primary engine. The speed advantage is non-negotiable for the "Ghost Typing" feature, and the reasoning gap is bridged by the RAG architecture which provides the model with the exact legal text it needs to cite.
+*Decision*: We selected **Llama 3.3-70B running on Groq** as the primary engine. The speed advantage is non-negotiable for the "Ghost Typing" feature, and the reasoning gap is bridged by the RAG architecture which provides the model with the exact legal text it needs to cite.
 
 ## 5.3 User Interface Design
 
