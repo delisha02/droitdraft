@@ -77,11 +77,12 @@ class RetrievalService:
         - dense: persistent vectorstore retrieval
         - hybrid: dense candidate fetch + in-memory hybrid rerank
         """
-        dense_retriever = self.get_persistent_retriever(k=k)
+        candidate_k = k if strategy != "hybrid" else max(k * 4, 12)
+        dense_retriever = self.get_persistent_retriever(k=candidate_k)
         dense_docs = dense_retriever.invoke(query) or []
 
         if strategy != "hybrid":
-            return dense_docs
+            return dense_docs[:k]
 
         if not dense_docs:
             return []
@@ -91,4 +92,4 @@ class RetrievalService:
             return hybrid_retriever.invoke(query) or dense_docs
         except Exception:
             # Guardrail: never fail request path due to hybrid rerank issues.
-            return dense_docs
+            return dense_docs[:k]

@@ -3,7 +3,7 @@ from typing import Dict, Any
 from app.agents.document_generator.fact_mapper import map_facts_to_template
 from app.agents.document_generator.section_generator import generate_sections, SECTION_SEPARATOR
 from app.agents.document_generator.consistency_checker import check_consistency
-from app.agents.document_generator.document_formatter import format_document
+from app.agents.document_generator.document_formatter import format_document, normalize_clause_style
 
 class DocumentAssemblyEngine:
     async def assemble_document(
@@ -24,7 +24,8 @@ class DocumentAssemblyEngine:
         """
 
         # 1. Fact-to-template mapping
-        filled_template = map_facts_to_template(case_facts, template)
+        normalized_template = normalize_clause_style(template)
+        filled_template = map_facts_to_template(case_facts, normalized_template)
 
         # 2. Section-wise generation
         sections = await generate_sections(filled_template, case_facts)

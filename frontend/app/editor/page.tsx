@@ -132,6 +132,8 @@ const documentTemplates = {
   contracts: "General Agreement",
 }
 
+const removeBracketedSuffix = (title: string): string => title.replace(/\s*\([^)]*\)\s*$/, "").trim()
+
 /**
  * Converts basic Markdown/Plaintext with \n to HTML for the editor
  */
@@ -680,7 +682,7 @@ function EditorContent() {
       console.log("Syncing template to editor:", templateData.name);
       editorRef.current.innerHTML = "";
       updateDocument({
-        title: templateData.name,
+        title: removeBracketedSuffix(templateData.name),
         content: "",
         type: docType
       });

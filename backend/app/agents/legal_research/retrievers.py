@@ -27,11 +27,11 @@ except Exception:
 
 
 try:
-    from langchain_community.embeddings import SentenceTransformerEmbeddings  # type: ignore
+    from langchain_huggingface import HuggingFaceEmbeddings  # type: ignore
 except Exception:
-    class SentenceTransformerEmbeddings:  # type: ignore[misc]
+    class HuggingFaceEmbeddings:  # type: ignore[misc]
         def __init__(self, *args, **kwargs):
-            raise ImportError("langchain_community is required for embeddings")
+            raise ImportError("langchain_huggingface is required for embeddings")
 
 
 try:
@@ -71,7 +71,7 @@ def get_hybrid_retriever(
     This is primarily used for testing and local experimentation where a
     list of LangChain `Document` objects is already available.
     """
-    embeddings = SentenceTransformerEmbeddings(model_name=embedding_model)
+    embeddings = HuggingFaceEmbeddings(model_name=embedding_model)
 
     # Dense retriever via vector store
     vectorstore = Chroma.from_documents(documents, embeddings)
@@ -106,7 +106,7 @@ def get_persistent_retriever(
     """
     Returns a retriever connected to the persistent ChromaDB.
     """
-    embeddings = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
     # Initialize connection to existing DB
     # Note: We need to ensure we point to the same directory as DocumentStore

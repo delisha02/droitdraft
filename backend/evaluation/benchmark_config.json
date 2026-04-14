@@ -1,0 +1,197 @@
+{
+  "name": "DroitDraft Recommended Evaluation v1",
+  "summary": "Four-track benchmark covering extraction, retrieval, generation, ghost typing, and system operations.",
+  "retrieval_k_values": [1, 3, 5, 8, 10],
+  "tracks": {
+    "extraction": {
+      "thresholds": [
+        {
+          "metric": "micro_f1",
+          "target": 0.9,
+          "operator": ">=",
+          "notes": "Target for typed and clean source documents."
+        },
+        {
+          "metric": "required_field_completion_rate",
+          "target": 0.95,
+          "operator": ">=",
+          "notes": "Target for typed and clean source documents."
+        },
+        {
+          "metric": "human_correction_rate",
+          "target": 0.15,
+          "operator": "<=",
+          "notes": "Initial launch target."
+        }
+      ],
+      "dataset": {
+        "track": "extraction",
+        "minimum_samples": 250,
+        "categories": [
+          "death certificates",
+          "wills",
+          "probate-related documents",
+          "sale deeds",
+          "legal notices"
+        ],
+        "split": {
+          "train": 0.7,
+          "dev": 0.15,
+          "test": 0.15,
+          "holdout_description": "Add a noisy OCR holdout slice for scanned and low-quality documents."
+        },
+        "notes": "Track field-level precision, recall, F1, exact match, completion, and human correction rate."
+      }
+    },
+    "retrieval": {
+      "thresholds": [
+        {
+          "metric": "mrr",
+          "target": 0.75,
+          "operator": ">="
+        },
+        {
+          "metric": "recall@5",
+          "target": 0.85,
+          "operator": ">="
+        },
+        {
+          "metric": "citation_precision",
+          "target": 0.95,
+          "operator": ">="
+        },
+        {
+          "metric": "no_answer_accuracy",
+          "target": 0.95,
+          "operator": ">="
+        }
+      ],
+      "dataset": {
+        "track": "retrieval",
+        "minimum_samples": 200,
+        "categories": [
+          "statutory interpretation",
+          "case-law lookup",
+          "jurisdiction filtering",
+          "procedural questions",
+          "negative or unsupported queries"
+        ],
+        "notes": "Tune hybrid retrieval with BM25 weight 0.6 and dense weight 0.4. Evaluate k in 1, 3, 5, 8, 10."
+      },
+      "operational_defaults": {
+        "default_k_simple": 5,
+        "default_k_complex": 8,
+        "bm25_weight": 0.6,
+        "dense_weight": 0.4
+      }
+    },
+    "generation": {
+      "thresholds": [
+        {
+          "metric": "required_clause_completion_rate",
+          "target": 0.95,
+          "operator": ">="
+        },
+        {
+          "metric": "field_accuracy",
+          "target": 0.9,
+          "operator": ">="
+        },
+        {
+          "metric": "factual_consistency_rate",
+          "target": 0.95,
+          "operator": ">="
+        },
+        {
+          "metric": "citation_coverage",
+          "target": 0.9,
+          "operator": ">="
+        },
+        {
+          "metric": "human_correction_rate",
+          "target": 0.15,
+          "operator": "<=",
+          "notes": "Initial launch target; improve toward 0.10."
+        }
+      ],
+      "dataset": {
+        "track": "generation",
+        "minimum_samples": 120,
+        "categories": [
+          "normal cases",
+          "missing fields",
+          "conflicting evidence",
+          "citation-heavy prompts",
+          "unsupported or high-risk prompts"
+        ],
+        "notes": "Use 15-20 tasks per supported template or document type. Treat retrieval_sources, citation_checks, validation_report, and confidence_score as first-class signals."
+      },
+      "operational_defaults": {
+        "mandatory_review_below": 0.75,
+        "recommended_review_below": 0.85
+      }
+    },
+    "ghost_typing": {
+      "thresholds": [
+        {
+          "metric": "latency_p95_ms",
+          "target": 400,
+          "operator": "<="
+        },
+        {
+          "metric": "average_helpfulness_score",
+          "target": 3.5,
+          "operator": ">="
+        },
+        {
+          "metric": "contradiction_rate",
+          "target": 0.05,
+          "operator": "<="
+        }
+      ],
+      "dataset": {
+        "track": "ghost_typing",
+        "minimum_samples": 100,
+        "categories": [
+          "editor continuation",
+          "fact-grounded continuation",
+          "draft complete or no suggestion expected"
+        ],
+        "notes": "Treat ghost typing as a UX quality track rather than the primary legal-accuracy benchmark."
+      }
+    },
+    "system": {
+      "thresholds": [
+        {
+          "metric": "latency_p95_ms",
+          "target": 15000,
+          "operator": "<=",
+          "notes": "Draft generation SLA in milliseconds."
+        },
+        {
+          "metric": "api_error_rate",
+          "target": 0.01,
+          "operator": "<="
+        }
+      ],
+      "dataset": {
+        "track": "system",
+        "minimum_samples": 50,
+        "categories": [
+          "generation latency",
+          "research latency",
+          "extraction latency",
+          "throughput and concurrency",
+          "unsupported query handling"
+        ],
+        "notes": "Track pages per minute, throughput, latency, failure rate, and human review burden."
+      }
+    }
+  },
+  "notes": [
+    "Legal correctness takes priority over grounding, completeness, latency, and UX polish.",
+    "Patent-style MRR and Hits@k are used for retrieval and evidence ranking rather than as the main drafting metric.",
+    "BERTScore and ROUGE-L are secondary and should not gate release readiness without legal review.",
+    "Human review remains mandatory for low-confidence or citation-critical outputs."
+  ]
+}

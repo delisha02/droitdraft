@@ -16,10 +16,10 @@ def sample_documents():
 
 @patch('app.agents.legal_research.retrievers.BM25Retriever')
 @patch('app.agents.legal_research.retrievers.Chroma')
-@patch('app.agents.legal_research.retrievers.SentenceTransformerEmbeddings')
-def test_get_hybrid_retriever(MockSentenceTransformerEmbeddings, MockChroma, MockBM25Retriever, sample_documents):
+@patch('app.agents.legal_research.retrievers.HuggingFaceEmbeddings')
+def test_get_hybrid_retriever(MockHuggingFaceEmbeddings, MockChroma, MockBM25Retriever, sample_documents):
     # Arrange
-    mock_embeddings = MockSentenceTransformerEmbeddings.return_value
+    mock_embeddings = MockHuggingFaceEmbeddings.return_value
 
     # Setup mock for Chroma vector retriever
     mock_vector_retriever = MagicMock(spec=Runnable)

@@ -12,6 +12,7 @@ CORE PRINCIPLES:
 4. **Autonomous Drafting**: If the user provides high-level goals (e.g., "Draft a Probate Petition"), use the provided template as a structure but autonomously populate all necessary sections using the evidence.
 5. **Consistency**: Ensure names, dates, and amounts are consistent across the entire document.
 6. **No Hallucinations**: If critical information (like a date of death) is missing from both the facts and evidence, use a placeholder like `{{ date_of_death }}` rather than guessing.
+7. **Clause Style**: Keep the body in plain numbered clauses. Do not use inline clause labels such as `FACTUAL BACKGROUND:`, `GRIEVANCE:`, `DEMAND:`, `CAUSE OF ACTION:`, `DECLARATION:`, or similar heading text inside numbered points.
 """
 
 def create_generation_prompt(case_facts: Dict[str, Any], template: str) -> str:
@@ -78,6 +79,8 @@ def create_generation_prompt(case_facts: Dict[str, Any], template: str) -> str:
    - If a placeholder has no data, use the specific placeholder name: `{{ missing_field }}`.
 3. **Evidence-First**: If facts found in Source Evidence (e.g., Death Certificate) conflict with the user's initial prompt, use the Evidence.
 4. **Drafting Style**: Ensure the tone is formal, consistent with Maharashtra legal practice. Use "The Vendor", "The Executrix", etc., as appropriate for the document type.
+   - Use simple numbered clauses like `1. ...`, `2. ...`, `3. ...`.
+   - If the blueprint contains heading-style labels inside clauses, convert them into ordinary sentence text rather than reproducing the label.
 5. **No Hallucinations**: Do not invent properties, names, or dates.
 
 **Generated Legal Draft:**

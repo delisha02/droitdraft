@@ -30,6 +30,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 
 const icons = [FileText, Shield, Scale, Home, Briefcase, Mail, AlertCircle, FileCheck, Repeat, CheckCircle, ArrowRight, Building2, FileDocument, Gift];
 const colors = ["bg-red-500", "bg-green-500", "bg-blue-500", "bg-purple-500", "bg-indigo-500", "bg-amber-500", "bg-cyan-500", "bg-orange-500", "bg-emerald-500", "bg-rose-500", "bg-lime-500", "bg-pink-500", "bg-sky-500", "bg-violet-500", "bg-fuchsia-500", "bg-teal-500"];
+const removeBracketedSuffix = (title: string) => title.replace(/\s*\([^)]*\)\s*$/, "").trim();
 
 export default function DashboardPage() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
@@ -60,7 +61,7 @@ export default function DashboardPage() {
           const data = await response.json();
           setDocumentTypes(data.map((template: any, index: number) => ({
             id: template.id,
-            title: template.name,
+            title: removeBracketedSuffix(template.name),
             description: template.description,
             icon: icons[index % icons.length],
             color: colors[index % colors.length],

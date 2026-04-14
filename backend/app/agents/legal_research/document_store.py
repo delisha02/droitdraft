@@ -4,6 +4,41 @@ from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import SentenceTransformerEmbeddings
 from langchain_core.documents import Document
 
+
+def _coerce_metadata_value(value: Any) -> Optional[str | int | float | bool]:
+    if value is None:
+        return None
+    if isinstance(value, (str, int, float, bool)):
+        return value
+    return str(value)
+
+
+def _build_chroma_metadata(
+    doc: Dict[str, Any],
+    content_key: str = "content",
+    metadata_exclude_keys: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    metadata_exclude_keys = metadata_exclude_keys or []
+    metadata: Dict[str, Any] = {}
+
+    nested_metadata = doc.get("metadata")
+    if isinstance(nested_metadata, dict):
+        for key, value in nested_metadata.items():
+            if key in metadata_exclude_keys:
+                continue
+            coerced = _coerce_metadata_value(value)
+            if coerced is not None:
+                metadata[key] = coerced
+
+    for key, value in doc.items():
+        if key in {content_key, "metadata"} or key in metadata_exclude_keys:
+            continue
+        coerced = _coerce_metadata_value(value)
+        if coerced is not None:
+            metadata[key] = coerced
+
+    return metadata
+
 class DocumentStore:
     """
     A persistent document store using ChromaDB to store judgments/legal texts.
@@ -26,8 +61,12 @@ class DocumentStore:
         self.persist_directory = persist_directory
         self.collection_name = collection_name
         
-        # Initialize Embeddings (using local SentenceTransformers model)
-        self.embeddings = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+        # Initialize Embeddings (using local HuggingFaceEmbeddings model)
+        try:
+            from langchain_huggingface import HuggingFaceEmbeddings
+        except ImportError:
+            raise ImportError("langchain_huggingface is required for embeddings")
+        self.embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
         
         # Initialize Chroma
         self.vector_store = Chroma(
@@ -50,17 +89,13 @@ class DocumentStore:
             content = doc.get(content_key)
             if not content:
                 continue # Skip empty content
-                
-            # Prepare metadata
-            metadata = {}
-            for k, v in doc.items():
-                if k != content_key and k not in metadata_exclude_keys:
-                    # Chroma metadata values must be str, int, float, bool
-                    if isinstance(v, (str, int, float, bool)):
-                        metadata[k] = v
-                    else:
-                        metadata[k] = str(v) # Fallback to string representation
-            
+
+            metadata = _build_chroma_metadata(
+                doc,
+                content_key=content_key,
+                metadata_exclude_keys=metadata_exclude_keys,
+            )
+
             langchain_docs.append(Document(page_content=content, metadata=metadata))
         
         if langchain_docs:

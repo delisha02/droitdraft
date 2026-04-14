@@ -21,8 +21,14 @@ def seed_templates():
         templates_data = json.load(f)
     
     for template_data in templates_data:
-        # Check if template already exists
-        db_template = db.query(Template).filter(Template.name == template_data["name"]).first()
+        # Match by stable document type first so renamed templates update in place.
+        db_template = (
+            db.query(Template)
+            .filter(Template.document_type == template_data["document_type"])
+            .first()
+        )
+        if not db_template:
+            db_template = db.query(Template).filter(Template.name == template_data["name"]).first()
         if db_template:
             print(f"Updating existing template: {template_data['name']}")
             for key, value in template_data.items():

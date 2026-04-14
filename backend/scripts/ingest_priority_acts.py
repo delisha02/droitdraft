@@ -1,4 +1,7 @@
 import asyncio
+
+# Deprecated wrapper: use ingest_legal_research_catalog.py directly for the curated catalog.
+from ingest_legal_research_catalog import main as run_curated_ingestion
 import os
 import sys
 import re
@@ -154,4 +157,4 @@ async def main():
         await asyncio.sleep(3)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(run_curated_ingestion())
