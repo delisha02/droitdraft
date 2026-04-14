@@ -42,7 +42,7 @@ graph TD
     Worker -->|OCR/Scraping| ExtServices[External APIs]
     end
     
-    Backend <-->|Inference| LLMAPI[LLM Provider - Groq (Llama 3.3)]
+    Backend <-->|Inference| LLMAPI["LLM Provider - Groq (Llama 3.3)"]
 ```
 
 ## 5.2 Models Explored

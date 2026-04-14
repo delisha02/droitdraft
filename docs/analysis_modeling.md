@@ -13,9 +13,9 @@ stateDiagram-v2
     SelectTemplate --> UploadEvidence: Optional
     
     state "Evidence Processing Phase" as EP {
-        UploadEvidence --> OCR_Scan: Tesseract/Vision API
-        OCR_Scan --> ExtractFacts: LLM-based NER
-        ExtractFacts --> ValidateFacts: User Review Interface
+        UploadEvidence --> OCR_Scan: "Tesseract/Vision API"
+        OCR_Scan --> ExtractFacts: "LLM-based NER"
+        ExtractFacts --> ValidateFacts: "User Review Interface"
     }
     
     UploadEvidence --> ManualEntry: Skip Upload
@@ -80,10 +80,10 @@ flowchart TD
     User[User]
     
     subgraph DroitDraft Core
-        P1((1. Auth &<br/>User Mgmt))
-        P2((2. Document<br/>Processing))
-        P3((3. Drafting<br/>Engine))
-        P4((4. Legal<br/>Research))
+        P1(("1. Auth &<br/>User Mgmt"))
+        P2(("2. Document<br/>Processing"))
+        P3(("3. Drafting<br/>Engine"))
+        P4(("4. Legal<br/>Research"))
         DB[(PostgreSQL)]
         VectorDB[(ChromaDB)]
     end
@@ -110,11 +110,11 @@ Input: Raw PDF -> Output: Structured JSON.
 
 ```mermaid
 flowchart LR
-    Input[PDF Upload] --> P2_1((2.1 OCR<br/>Extraction))
-    P2_1 -- "Raw Text" --> P2_2((2.2 Entity<br/>Recognition))
-    P2_2 -- "Entities (Named)" --> P2_3((2.3 Fact<br/>Mapper))
+    Input[PDF Upload] --> P2_1(("2.1 OCR<br/>Extraction"))
+    P2_1 -- "Raw Text" --> P2_2(("2.2 Entity<br/>Recognition"))
+    P2_2 -- "Entities (Named)" --> P2_3(("2.3 Fact<br/>Mapper"))
     
-    Schema[(Template<br/>Schema)] -- "Field Types" --> P2_3
+    Schema[("Template<br/>Schema")] -- "Field Types" --> P2_3
     P2_3 --> Output[Structured JSON]
 ```
 
@@ -123,12 +123,12 @@ Input: Query -> Output: Answer with Citations.
 
 ```mermaid
 flowchart LR
-    Query[User Query] --> P4_1((4.1 Query<br/>Embedding))
-    P4_1 --> P4_2((4.2 Semantic<br/>Hybrid Search))
+    Query[User Query] --> P4_1(("4.1 Query<br/>Embedding"))
+    P4_1 --> P4_2(("4.2 Semantic<br/>Hybrid Search"))
     
-    VectorDB[(ChromaDB)] -- "Relevant Chunks" --> P4_2
-    P4_2 -- "Context + Query" --> P4_3((4.3 LLM<br/>Synthesis))
-    P4_3 -- "Answer" --> Answer[Legal Answer<br/>with Citations]
+    VectorDB[("ChromaDB")] -- "Relevant Chunks" --> P4_2
+    P4_2 -- "Context + Query" --> P4_3(("4.3 LLM<br/>Synthesis"))
+    P4_3 -- "Answer" --> Answer["Legal Answer<br/>with Citations"]
 ```
 
 ## 4.3 Timeline Chart

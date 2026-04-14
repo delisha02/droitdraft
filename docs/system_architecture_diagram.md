@@ -55,49 +55,49 @@ flowchart LR
 graph TB
     %% ======== Clients ========
     subgraph Clients[Client Layer]
-        Browser[Lawyer Browser\nNext.js UI]
-        APIClient[Programmatic Client\nREST consumer]
+        Browser["Lawyer Browser\nNext.js UI"]
+        APIClient["Programmatic Client\nREST consumer"]
     end
 
     %% ======== Frontend ========
     subgraph Frontend[Frontend - Next.js 14]
-        AppRoutes[App Router Pages\n/dashboard /editor /auth]
-        UIComp[UI Components\nEditor, Document List, Modals]
-        Hooks[Client Hooks\nuse-document, use-ghost-typing]
-        NextAPI[Next API Routes\n/api/documents/search\n/api/documents/export]
-        Actions[Server Actions\nfrontend/lib/actions.tsx]
+        AppRoutes["App Router Pages\n/dashboard /editor /auth"]
+        UIComp["UI Components\nEditor, Document List, Modals"]
+        Hooks["Client Hooks\nuse-document, use-ghost-typing"]
+        NextAPI["Next API Routes\n/api/documents/search\n/api/documents/export"]
+        Actions["Server Actions\nfrontend/lib/actions.tsx"]
     end
 
     %% ======== Backend API ========
     subgraph Backend[Backend - FastAPI]
-        Main[app/main.py\nFastAPI bootstrap + middleware]
-        V1Router[API v1 Router\napp/api/v1/api.py]
+        Main["app/main.py\nFastAPI bootstrap + middleware"]
+        V1Router["API v1 Router\napp/api/v1/api.py"]
 
         subgraph Endpoints[Domain Endpoints]
             AuthEP[auth.py]
             UploadEP[upload.py]
-            DocsEP[documents.py + documents_crud.py]
+            DocsEP["documents.py + documents_crud.py"]
             TemplatesEP[templates.py]
             ResearchEP[research.py]
             OrchestratorEP[orchestrator.py]
         end
 
-        Deps[Dependency Layer\napp/api/deps.py]
-        Security[Security\nJWT + hashing\napp/core/security.py]
-        Config[Settings\napp/core/config.py]
+        Deps["Dependency Layer\napp/api/deps.py"]
+        Security["Security\nJWT + hashing\napp/core/security.py"]
+        Config["Settings\napp/core/config.py"]
     end
 
     %% ======== Core Services ========
     subgraph Services[Application Services]
-        LLMService[llm_service.py\nGroq primary + Gemini fallback]
-        StorageSvc[storage.py\nMinIO/S3 interactions]
+        LLMService["llm_service.py\nGroq primary + Gemini fallback"]
+        StorageSvc["storage.py\nMinIO/S3 interactions"]
         TemplateSvc[template_service.py]
         Validator[document_validator.py]
         DocIndexer[document_indexer.py]
         EmbedGen[embedding_generator.py]
         CorpusIngest[corpus_ingestion.py]
         IngestMon[ingestion_monitor.py]
-        TaskFacade[tasks.py\nservice-level async entrypoints]
+        TaskFacade["tasks.py\nservice-level async entrypoints"]
     end
 
     %% ======== Agent Layer ========
@@ -175,22 +175,22 @@ graph TB
 
     %% ======== Persistence ========
     subgraph Data[Persistence & Infrastructure]
-        Postgres[(PostgreSQL\nusers/templates/docs/jobs)]
-        Chroma[(ChromaDB\nvectors + semantic search)]
-        MinIO[(MinIO S3\nuploaded/source files)]
-        Redis[(Redis\nCelery broker/result)]
+        Postgres[(PostgreSQL\n"users/templates/docs/jobs")]
+        Chroma[(ChromaDB\n"vectors + semantic search")]
+        MinIO[(MinIO S3\n"uploaded/source files")]
+        Redis[(Redis\n"Celery broker/result")]
     end
 
     %% ======== Worker ========
     subgraph Async[Asynchronous Compute]
         CeleryApp[celery_app.py]
-        Workers[Celery Workers\nlong-running processing]
+        Workers["Celery Workers\nlong-running processing"]
     end
 
     %% ======== External LLM ========
     subgraph LLMProviders[LLM Providers]
-        Groq[Groq API\nLlama family]
-        Gemini[Google Gemini API\nfallback/provider]
+        Groq["Groq API\nLlama family"]
+        Gemini["Google Gemini API\nfallback/provider"]
     end
 
     %% ======== Flows ========
