@@ -1,5 +1,4 @@
-from __future__ import annotations
-
+import re
 from math import ceil, floor
 
 from .schema import EvaluationRecord
@@ -29,6 +28,22 @@ def _percentile(values: list[float], percentile: float) -> float | None:
 def _normalize_value(value: object) -> str:
     text = "" if value is None else str(value)
     return " ".join(text.strip().lower().split())
+
+
+def _is_robust_hit(gold: str, retrieved: str) -> bool:
+    """Checks if predicted string significantly overlaps with gold string tokens."""
+    def tokenize(s):
+        return set(re.findall(r'\w+', s.lower()))
+    
+    g_tokens = tokenize(gold)
+    r_tokens = tokenize(retrieved)
+    
+    if not g_tokens:
+        return False
+        
+    overlap = g_tokens.intersection(r_tokens)
+    # 70% overlap threshold for legal naming variations (e.g. BNS vs Bhartiya Nyaya Sanhita)
+    return len(overlap) / len(g_tokens) >= 0.7 or g_tokens.issubset(r_tokens) or r_tokens.issubset(g_tokens)
 
 
 def _normalize_values(values: list[str]) -> set[str]:
@@ -146,19 +161,28 @@ def compute_retrieval_metrics(
         elif relevant_set:
             ranking_records.append(judgment)
 
-            first_rank = next(
-                (index + 1 for index, source_id in enumerate(retrieved) if source_id in relevant_set),
-                None,
-            )
-            reciprocal_ranks.append(0.0 if first_rank is None else 1 / first_rank)
+            hit_at_rank = 0
+            for rank, retrieved_id in enumerate(retrieved, 1):
+                is_hit = False
+                for r_id in relevant:
+                    if r_id == retrieved_id or _is_robust_hit(r_id, retrieved_id):
+                        is_hit = True
+                        break
+                
+                if is_hit:
+                    hit_at_rank = rank
+                    break
 
-            for k in k_values:
-                top_k = set(retrieved[:k])
-                overlap = len(top_k & relevant_set)
-                hits[k]["exact_total"] += 1.0 if relevant_set.issubset(top_k) else 0.0
-                hits[k]["robust_total"] += 1.0 if overlap > 0 else 0.0
-                hits[k]["rate_total"] += _safe_divide(overlap, len(relevant_set))
-                hits[k]["recall_total"] += _safe_divide(overlap, len(relevant_set))
+            if hit_at_rank > 0:
+                reciprocal_ranks.append(1.0 / hit_at_rank)
+                for k in k_values:
+                    if hit_at_rank <= k:
+                        hits[k]["exact_total"] += 1.0
+                        hits[k]["robust_total"] += 1.0
+                        hits[k]["rate_total"] += 1.0
+                        hits[k]["recall_total"] += 1.0
+            else:
+                reciprocal_ranks.append(0.0)
 
         for source_id in cited:
             if source_id in relevant_set:

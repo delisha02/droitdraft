@@ -1,6 +1,6 @@
 {
   "name": "DroitDraft Recommended Evaluation v1",
-  "summary": "Four-track benchmark covering extraction, retrieval, generation, ghost typing, and system operations.",
+  "summary": "Phase 1 benchmark totaling 150 queries covering extraction, retrieval, generation, ghost typing, and system operations.",
   "retrieval_k_values": [1, 3, 5, 8, 10],
   "tracks": {
     "extraction": {
@@ -26,7 +26,7 @@
       ],
       "dataset": {
         "track": "extraction",
-        "minimum_samples": 250,
+        "minimum_samples": 30,
         "categories": [
           "death certificates",
           "wills",
@@ -68,7 +68,7 @@
       ],
       "dataset": {
         "track": "retrieval",
-        "minimum_samples": 200,
+        "minimum_samples": 30,
         "categories": [
           "statutory interpretation",
           "case-law lookup",
@@ -116,7 +116,7 @@
       ],
       "dataset": {
         "track": "generation",
-        "minimum_samples": 120,
+        "minimum_samples": 30,
         "categories": [
           "normal cases",
           "missing fields",
@@ -151,7 +151,7 @@
       ],
       "dataset": {
         "track": "ghost_typing",
-        "minimum_samples": 100,
+        "minimum_samples": 30,
         "categories": [
           "editor continuation",
           "fact-grounded continuation",
@@ -176,7 +176,7 @@
       ],
       "dataset": {
         "track": "system",
-        "minimum_samples": 50,
+        "minimum_samples": 30,
         "categories": [
           "generation latency",
           "research latency",
