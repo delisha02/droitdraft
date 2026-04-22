@@ -20,7 +20,7 @@ The project relies on three key Docker services:
 
 1. **Start all required containers**:
    ```powershell
-   docker start postgres_db compassionate_buck great_banzai
+   docker-compose up -d
    ```
 
 2. **Database Permissions** (First-time setup):
@@ -53,6 +53,18 @@ The project relies on three key Docker services:
 
 ---
 
+## 4. Evaluation & Benchmarking
+
+To validate the system's legal accuracy and retrieval performance:
+1. **Navigate to backend**: `cd backend`
+2. **Run Evaluation Suite**:
+   ```powershell
+   python scripts/run_evaluation.py
+   ```
+3. **View Report**: Open `backend/evaluation/mumbai_benchmark_report.md` for the latest metrics on MRR, Recall, and Faithfulness.
+
+---
+
 ## 🚀 Key Features Implemented
 
 ### Phase 1: Knowledge & Extraction
@@ -71,6 +83,11 @@ The project relies on three key Docker services:
 - **Tab-to-Accept**: Press `Tab` to accept AI suggestions instantly.
 - **Context-Awareness**: Suggestions adapt based on the current draft and extracted case facts.
 
+### Phase 4: Academic Rigor & Evaluation
+- **Comprehensive Documentation**: Full 7-chapter project report for Semester VIII submission.
+- **Evaluation Framework**: Automated benchmarks for retrieval recall, faithfulness, and system latency.
+- **Agentic Remediation**: Automated repair passes for drafts that fail validation checks.
+
 ### Core Features
 - **Agentic Drafting Flow**: Powered by **Llama 3.3 (Groq)** with Gemini fallback.
 - **Smart Editor**: Markdown-to-HTML rendering with automatic date injection.
@@ -80,6 +97,7 @@ The project relies on three key Docker services:
 
 ## 📄 Documentation
 
-- **[PROJECT_STATUS.md](PROJECT_STATUS.md)**: Comprehensive verification guide for all features.
+- **[Major Project Documentation (Sem VIII)](docs/major_project_documentation_sem_viii.md)**: Extremely detailed technical report covering 7 chapters.
+- **[docs/system_architecture_diagram.md](docs/system_architecture_diagram.md)**: Highly detailed architecture diagrams and agentic interaction sequences.
+- **[docs/evaluation_framework.md](docs/evaluation_framework.md)**: Breakdown of metrics (MRR, Faithfulness, F1) used to validate system performance.
 - **[roadmap.md](roadmap.md)**: Development roadmap and future plans.
-- **[docs/system_architecture_diagram.md](docs/system_architecture_diagram.md)**: Highly detailed architecture diagrams, including a structured block diagram with explicit per-agent interactions, runtime sequence, and ingestion pipeline.
