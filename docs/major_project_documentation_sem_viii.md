@@ -30,7 +30,8 @@ The Indian legal system, while robust, is traditionally labor-intensive. Junior 
 - **Agentic Workflow**: A system design where autonomous "agents" perform specific sub-tasks (e.g., research, extraction, drafting) in a coordinated sequence with a "Refinement Pass."
 - **Ghost Flow**: A novel UX paradigm providing real-time, context-aware inline legal text suggestions using next-token prediction.
 - **Grounded Drafting**: A methodology ensuring that every clause in a generated draft is linked to a retrieved legal source (Statute/Precedent).
-- **One-Shot Generative Extraction**: Using LLMs to extract structured JSON entities from unstructured OCR text by providing a single high-quality example in the prompt.
+- **One-Shot Generative Information Extraction**: Using LLMs to extract structured JSON entities from unstructured OCR text by providing a single high-quality example in the prompt.
+
 
 ### ● Fundamental Study Points
 - **Jurisdictional Focus**: Primary emphasis on laws and procedures applicable in **Maharashtra** (Bombay High Court and lower courts) and Central Indian Acts.
@@ -84,26 +85,29 @@ DroitDraft is built on a service-oriented architecture (SOA) where specialized m
 #### o Block Diagram / Workflow
 ```mermaid
 graph TD
-    User((Lawyer)) -->|Upload Documents| FE[Next.js Frontend]
-    FE -->|JSON Payload| API[FastAPI Orchestrator]
+    User((Lawyer)) <-->|Interaction| FE[Next.js Frontend]
+    FE <-->|JSON Payload| API[FastAPI Orchestrator]
     
     subgraph "Intelligence Layer"
-        API -->|Task| DP[Document Processor Agent]
-        API -->|Query| RA[Research Agent]
-        API -->|Assembly| GA[Generation Agent]
+        API <-->|Tasks| DP[Document Processor Agent]
+        API <-->|Queries| RA[Research Agent]
+        API <-->|GIE Payload| EA[Extraction Agent]
+        API <-->|Assembly| GA[Generation Agent]
         
-        DP -->|OCR/NER| LLM[Groq LPU / Llama 3.3]
-        RA -->|Hybrid Search| VDB[(ChromaDB)]
+        DP -->|OCR / LLM-GIE| LLM[Groq LPU / Llama 3.3]
+
+        RA <-->|Hybrid Search| VDB[(ChromaDB)]
         GA -->|Remediation| VAL[Validation Engine]
     end
     
     subgraph "Storage Layer"
-        API -->|Metadata| PG[(PostgreSQL)]
-        API -->|Files| MO[(MinIO S3)]
+        API <-->|Metadata| PG[(PostgreSQL)]
+        API <-->|Files| MO[(MinIO S3)]
     end
     
-    API -->|Composition| FE
+    API <-->|Final Composition| FE
 ```
+
 
 #### o Working Principle (Algorithms)
 1.  **Retrieval Strategy Selection**: 
@@ -121,8 +125,10 @@ graph TD
     If $C < 0.75$, it triggers an **Agentic Remediation Pass** where the model is prompted with the errors found by the validation engine to "repair" the draft, subject to a `step_budget`.
 
 #### o Phase / Module-wise Explanation
-- **Extraction Phase**: Uses Tesseract for OCR. The raw text is cleaned and passed to Llama 3.3 with a Pydantic schema to extract entities like `executant_name`, `property_cts_number`, etc.
+- **Extraction Phase**: Uses Tesseract for OCR to extract raw text. This text is then processed via **Generative Information Extraction (GIE)** where Llama 3.3 uses a Pydantic schema to extract structured entities (like `executant_name`, `property_cts_number`, etc.) directly from the unstructured text.
+
 - **Research Phase**: The Research Agent analyzes the case facts and fetches relevant statutes from ChromaDB.
+
 - **Drafting Phase**: The Generation Agent uses Jinja2 templates for structure and LLM synthesis for legal clauses, ensuring citations are embedded.
 - **Review Phase**: The Validation Engine checks for missing mandatory clauses (e.g., "Verification" in plaints) and ensures all mentioned dates match the evidence.
 - **Export Phase**: A dual-format engine converting internal HTML/Markdown drafts into professional **PDF** (using `xhtml2pdf`) and **DOCX** (using `python-docx`) with automated style mapping for legal fonts and layouts.
@@ -182,10 +188,13 @@ graph TD
     Login --> Dashboard[Select Task]
     Dashboard --> Upload[Upload Evidence]
     Upload --> OCR[Perform OCR]
-    OCR --> NER[Extract Facts]
-    NER --> Verify{User Verification}
+    OCR --> GIE[Generative Information Extraction]
+
+
+    GIE --> Verify{User Verification}
     Verify -- Correct --> RAG[Retrieve Legal Context]
-    Verify -- Edit --> NER
+    Verify -- Edit --> GIE
+
     RAG --> Draft[Generate Initial Draft]
     Draft --> Val{Validation Pass}
     Val -- Pass --> Edit[Editor Interface]
@@ -221,28 +230,39 @@ sequenceDiagram
 
 **Component Diagram**
 ```mermaid
-component "DroitDraft System" {
-    [Next.js App] as FE
-    [FastAPI Service] as BE
-    [Celery Worker] as WRK
+graph TD
+    subgraph "Frontend Layer"
+        FE[Next.js Application]
+    end
+
+    subgraph "Backend Orchestrator"
+        API[FastAPI Service]
+        WRK[Celery Worker]
+    end
+
+    subgraph "Intelligence Agents"
+        RA[Research Agent]
+        GA[Drafting Agent]
+        EA[Extraction Agent]
+    end
+
+    subgraph "Data Storage"
+        PG[(PostgreSQL)]
+        CDB[(ChromaDB)]
+        S3[MinIO S3]
+    end
+
+    FE <-->|REST API| API
+    API <-->|Tasks| WRK
+    API <-->|Legal Query| RA
+    API <-->|Document Schema| GA
+    API <-->|OCR Text| EA
     
-    package "Agents" {
-        [Research Agent]
-        [Drafting Agent]
-        [Extraction Agent]
-    }
-    
-    database "PostgreSQL" as PG
-    database "ChromaDB" as CDB
-    [MinIO S3] as S3
-    
-    FE <--> BE
-    BE <--> WRK
-    BE --> PG
-    BE --> CDB
-    WRK --> S3
-}
+    API --- PG
+    RA --- CDB
+    WRK --- S3
 ```
+
 
 **Deployment Diagram**
 ```mermaid
