@@ -89,3 +89,30 @@ What are the mandatory documents required to file for Letters of Administration 
 1. Copy one of the quotes above.
 2. Paste it into the DroitDraft input interface.
 3. Observe the generated document. Check if facts were properly extracted and formatted into the document blueprint. Notice how missing entities prompt the system to generate placeholders (e.g., `{{ client_name }}`) rather than hallucinating details.
+
+
+**Legal Research**
+
+
+
+1. What are the essential ingredients of a claim for eviction and recovery of arrears under the Maharashtra Rent Control Act, 1999?
+
+2. What is the limitation period for filing a suit for specific performance under the Specific Relief Act read with the Limitation Act, 1963?
+
+3. What are the legal requirements for a valid notice and prosecution under Section 138 of the Negotiable Instruments Act, 1881?
+
+4. What provisions of the Transfer of Property Act, 1882 and the Indian Contract Act, 1872 are relevant for transfer of ownership through a sale deed?
+
+5. What procedural requirements under the Code of Civil Procedure, 1908 and the Bombay High Court (Original Side) Rules apply when filing a civil matter on the original side of the Bombay High Court?
+
+If you want broader coverage, also test:
+
+6. What are the main grounds for interim injunction under the Specific Relief Act, 1963 and the Indian Evidence Act, 1872?
+
+7. What are the core legal principles governing arbitration agreements under the Arbitration and Conciliation Act, 1996?
+
+8. What duties and liabilities of partners arise under the Indian Partnership Act, 1932?
+
+9. What are the key compliance and governance provisions relevant under the Companies Act, 2013 for a private company?
+
+10. What are the main protections and dispute-resolution mechanisms under the Industrial Disputes Act, 1947?
