@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     CHROMA_PORT: int
 
     GROQ_API_KEY: Optional[str] = None
+    GROQ_API_KEY_2: Optional[str] = None
+    GROQ_API_KEY_3: Optional[str] = None
+    GROQ_API_KEY_4: Optional[str] = None
+    GROQ_API_KEY_5: Optional[str] = None
+    GROQ_API_KEY_PROJECT: Optional[str] = None
     GEMINI_API_KEY: str
     INDIAN_KANOON_API_KEY: str
     REDIS_HOST: str
@@ -44,6 +49,7 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+        extra = "allow"
 
 settings = Settings()
 

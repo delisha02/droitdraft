@@ -38,17 +38,36 @@ class LegalCorpusIngestor:
         return soup.get_text(separator=" ", strip=True)
 
     def extract_sec_num(self, html_part: str) -> str:
-        id_match = re.search(r'id="section_(\d+[A-Z]?)"', html_part)
-        if id_match:
-            return id_match.group(1)
+        clean_preview = self.clean_html(html_part[:500])
 
-        h3_match = re.search(r"<h3>.*?(\d+[A-Z]?)\..*?</h3>", html_part, re.DOTALL)
-        if h3_match:
-            return h3_match.group(1)
+        patterns = [
+            r'id=["\']section[_-]?(\d+[A-Z]?)["\']',
+            r'class=["\'][^"\']*section[^"\']*["\'].*?data-section-id=["\'](\d+[A-Z]?)["\']',
+            r'<h[23][^>]*>.*?Section\s+(\d+[A-Z]?).*?</h[23]>',
+            r'<h[23][^>]*>(?:Chapter\s+\d+[^<]*<br\s*/?>)?\s*(\d+[A-Z]?)\.',
+            r'/doc/\d+/">(\d+[A-Z]?)\.',
+            r'<a[^>]+href=["\'][^"\']*#section[_-]?(\d+[A-Z]?)',
+            r'num=["\'](\d+[A-Z]?)["\'].*?(?:section|clause|article)',
+            r'(?:section|clause|article)\s*:?\s*["\']?(\d+[A-Z]?)["\']?\s*[.,:]',
+        ]
 
-        doc_match = re.search(r'/doc/\d+/">(\d+[A-Z]?)\.', html_part)
-        if doc_match:
-            return doc_match.group(1)
+        for pattern in patterns:
+            match = re.search(pattern, html_part, re.IGNORECASE | re.DOTALL)
+            if match:
+                return match.group(1)
+
+        text_pattern = r'(?:^|\s)(?:Section|Clause|Article|S\.|Cl\.)\s*(\d+[A-Z]?)(?:\s|$|[.,;:])'
+        text_match = re.search(text_pattern, clean_preview, re.MULTILINE | re.IGNORECASE)
+        if text_match:
+            return text_match.group(1)
+
+        standalone_num = re.search(r'(?:^|\s)Chapter\s+(\d+[A-Z]?)', clean_preview, re.IGNORECASE | re.MULTILINE)
+        if standalone_num:
+            return f"Ch{standalone_num.group(1)}"
+
+        part_match = re.search(r'<part[^>]*>(?:[^<]*<[^>]+>){0,3}[^<]*(\d+)', html_part, re.IGNORECASE)
+        if part_match:
+            return f"Part{part_match.group(1)}"
 
         return "Unknown"
 

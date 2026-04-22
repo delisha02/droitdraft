@@ -133,6 +133,7 @@ LEGAL_RESEARCH_ACT_CATALOG = [
         "name": "Negotiable Instruments Act, 1881",
         "aliases": ["negotiable instruments act", "ni act", "negotiable instrument act"],
         "search_query": "\"Negotiable Instruments Act\" bare act",
+        "tid": 1132672,
         "doc_type": "statute",
         "jurisdiction": "India",
         "priority": "Priority 2",

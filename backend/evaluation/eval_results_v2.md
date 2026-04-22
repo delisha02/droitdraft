@@ -1,18 +1,18 @@
 # DroitDraft Recommended Evaluation v1
 
-- Generated at: `2026-04-14T20:25:36.021711+00:00`
-- Total records: `150`
+- Generated at: `2026-04-15T06:03:44.380727+00:00`
+- Total records: `510`
 
 ## Task Counts
-- `extraction`: 30
-- `generation`: 30
-- `ghost_typing`: 30
-- `retrieval`: 30
-- `system`: 30
+- `extraction`: 100
+- `generation`: 100
+- `ghost_typing`: 100
+- `retrieval`: 110
+- `system`: 100
 
 ## Track Metrics
 ### Extraction
-- `record_count`: 30
+- `record_count`: 100
 - `micro_precision`: 1.0
 - `micro_recall`: 1.0
 - `micro_f1`: 1.0
@@ -23,22 +23,22 @@
 
 ### Retrieval
 > [!IMPORTANT]
-> **System Retrieval Accuracy: 76.7%** (Top-3 Recall)
-> **MRR Grade: 0.683** (Target: >0.700)
+> **System Retrieval Accuracy: 0.0%** (Top-3 Recall)
+> **MRR Grade: 0.000** (Target: >0.700)
 
-- `record_count`: 30
-- `ranking_record_count`: 30
-- `negative_record_count`: 0
-- `mrr`: 0.6833
+- `record_count`: 110
+- `ranking_record_count`: 100
+- `negative_record_count`: 10
+- `mrr`: 0.0
 - `citation_precision`: 0.0
 - `citation_hallucination_rate`: 0.0
 - `no_answer_accuracy`: 0.0
 - `answer_faithfulness`: 0.0
-- `recall_at_k`: {"recall@1": 0.6, "recall@3": 0.7667, "recall@5": 0.7667, "recall@8": 0.7667, "recall@10": 0.7667}
-- `hits_at_k`: {"hits@1": {"exact": 0.6, "robust": 0.6, "rate": 0.6}, "hits@3": {"exact": 0.7667, "robust": 0.7667, "rate": 0.7667}, "hits@5": {"exact": 0.7667, "robust": 0.7667, "rate": 0.7667}, "hits@8": {"exact": 0.7667, "robust": 0.7667, "rate": 0.7667}, "hits@10": {"exact": 0.7667, "robust": 0.7667, "rate": 0.7667}}
+- `recall_at_k`: {"recall@1": 0.0, "recall@3": 0.0, "recall@5": 0.0, "recall@8": 0.0, "recall@10": 0.0}
+- `hits_at_k`: {"hits@1": {"exact": 0.0, "robust": 0.0, "rate": 0.0}, "hits@3": {"exact": 0.0, "robust": 0.0, "rate": 0.0}, "hits@5": {"exact": 0.0, "robust": 0.0, "rate": 0.0}, "hits@8": {"exact": 0.0, "robust": 0.0, "rate": 0.0}, "hits@10": {"exact": 0.0, "robust": 0.0, "rate": 0.0}}
 
 ### Generation
-- `record_count`: 30
+- `record_count`: 100
 - `field_accuracy`: 1.0
 - `factual_consistency_rate`: 1.0
 - `required_clause_completion_rate`: 0.0
@@ -50,19 +50,19 @@
 - `confidence_routing`: {"mandatory_review": 0.0, "recommended_review": 0.0, "spot_audit": 0.0}
 
 ### Ghost Typing
-- `record_count`: 30
-- `acceptance_rate`: 0.3667
+- `record_count`: 100
+- `acceptance_rate`: 1.0
 - `false_trigger_rate`: 0.0
 - `groundedness_rate`: 0.0
 - `contradiction_rate`: 0.0
 - `average_helpfulness_score`: 4.0
-- `latency_p50_ms`: 8556.5996
-- `latency_p95_ms`: 66802.1391
+- `latency_p50_ms`: 2689.2644
+- `latency_p95_ms`: 2953.494
 
 ### System
-- `record_count`: 150
-- `latency_p50_ms`: 7272.616
-- `latency_p95_ms`: 19423.7751
+- `record_count`: 510
+- `latency_p50_ms`: 1984.4948
+- `latency_p95_ms`: 3165.5957
 - `failure_rate`: 0.0
 - `api_error_rate`: 0.0
 - `average_pages_per_minute`: 0.0

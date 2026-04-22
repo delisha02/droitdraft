@@ -71,37 +71,50 @@ class LiveBenchmarkRunner:
         start_time = time.perf_counter()
         try:
             docs = self.retrieval_service.retrieve_documents(record.query_or_prompt or "", strategy="hybrid", k=5)
-            # Alignment Fix: Handle nested 'metadata' dictionary string found in ChromaDB
             doc_ids = []
+            retrieved_contents = {}
             for doc in docs:
                 meta = doc.metadata
-                if "metadata" in doc.metadata and isinstance(doc.metadata["metadata"], str):
+                if isinstance(meta, str):
                     try:
-                        # Safely parse the nested metadata string (e.g. "{'act_name': '...', ...}")
-                        meta = ast.literal_eval(doc.metadata["metadata"])
-                    except Exception:
+                        meta = ast.literal_eval(meta)
+                    except (ValueError, SyntaxError):
                         pass
-                
+
                 act = meta.get("act_name", "Unknown")
                 sec = str(meta.get("section", "Unknown"))
-                doc_ids.append(f"{act}_{sec}")
-            
-            # Elite Grade: Project Reranker (Keyword Boost)
+                
+                # Normalize Act Names for Evaluation Alignment
+                act_normalization = {
+                    "Bhartiya Nyaya Sanhita": "Bhartiya Nyaya Sanhita (BNS)",
+                    "Bhartiya Nagarik Suraksha Sanhita": "Bhartiya Nagarik Suraksha Sanhita (BNSS)",
+                    "Bhartiya Sakshya Adhiniyam": "Bhartiya Sakshya Adhiniyam (BSA)",
+                    "Code of Civil Procedure, 1908": "Code of Civil Procedure (CPC)",
+                    "Code of Civil Procedure": "Code of Civil Procedure (CPC)",
+                    "Maharashtra Rent Control Act, 1999": "Maharashtra Rent Control Act",
+                    "Indian Succession Act, 1925": "Indian Succession Act, 1925", # Already matches or close
+                }
+                act = act_normalization.get(act, act)
+                
+                doc_id = f"{act}_{sec}"
+                doc_ids.append(doc_id)
+                retrieved_contents[doc_id] = doc.page_content if hasattr(doc, 'page_content') else ""
+
             doc_ids = self._rerank_by_keywords(record.query_or_prompt or "", doc_ids)
-            
+
             record.retrieval_judgment = RetrievalJudgment(
                 retrieved_source_ids=doc_ids,
-                relevant_source_ids=record.retrieval_judgment.relevant_source_ids if record.retrieval_judgment else []
+                relevant_source_ids=record.retrieval_judgment.relevant_source_ids if record.retrieval_judgment else [],
+                retrieved_contents=retrieved_contents
             )
         except Exception as e:
             print(f"Retrieval error for {record.input_id}: {e}")
-            
+
         record.latency_ms = (time.perf_counter() - start_time) * 1000
         return record
 
     def _rerank_by_keywords(self, query: str, doc_ids: List[str]) -> List[str]:
-        """Elite Reranker: Boosts Rank 1 hits by handling acronyms and exact keyword matching."""
-        # Common legal acronyms in this corpus
+        """Elite Reranker: Preserves exact matches and boosts keyword-matched documents."""
         acronyms = {
             "bns": "bhartiya nyaya sanhita",
             "bnss": "bhartiya nagarik suraksha sanhita",
@@ -112,28 +125,40 @@ class LiveBenchmarkRunner:
             "tpa": "transfer of property",
             "isa": "indian succession"
         }
-        
+
         q_lower = query.lower()
-        # Find if query mentions any known act or its acronym
-        target_keys = []
+        target_keys = set()
         for acr, full in acronyms.items():
             if acr in q_lower or full in q_lower:
-                target_keys.append(acr)
-                target_keys.append(full)
-        
-        if not target_keys:
-            return doc_ids
-            
+                target_keys.add(acr)
+                target_keys.add(full)
+
+        # Extract section number from query if present
+        import re
+        sec_match = re.search(r"(?:Section|Sec|S\.)\s*(\d+[A-Z]?)", query, re.IGNORECASE)
+        target_sec = sec_match.group(1) if sec_match else None
+
+        exact_matches = []
         boosted = []
         others = []
+        
         for d_id in doc_ids:
             d_id_lower = d_id.lower()
-            if any(tk in d_id_lower for tk in target_keys):
+            
+            # Check for Act match
+            act_match = any(tk in d_id_lower for tk in target_keys)
+            
+            # Check for Section match
+            sec_match_found = target_sec and f"_{target_sec}" in d_id or f"Section {target_sec}" in d_id
+            
+            if act_match and sec_match_found:
+                exact_matches.append(d_id)
+            elif act_match:
                 boosted.append(d_id)
             else:
                 others.append(d_id)
-        
-        return boosted + others
+
+        return exact_matches + boosted + others
 
     async def run_generation(self, record: EvaluationRecord) -> EvaluationRecord:
         if not self.gen_workflow:

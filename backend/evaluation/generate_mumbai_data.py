@@ -127,13 +127,31 @@ def generate_system_records(count):
     return records
 
 def main():
+    # Increase to 100 per task type
     all_records = []
-    all_records.extend(generate_extraction_records(30))
-    all_records.extend(generate_retrieval_records(30))
-    all_records.extend(generate_generation_records(30))
-    all_records.extend(generate_ghost_typing_records(30))
-    all_records.extend(generate_system_records(30))
-    
+    all_records.extend(generate_extraction_records(100))
+    all_records.extend(generate_retrieval_records(100))
+    all_records.extend(generate_generation_records(100))
+    all_records.extend(generate_ghost_typing_records(100))
+    all_records.extend(generate_system_records(100))
+
+    # Example: Add negative samples for retrieval (no answer expected)
+    for i in range(10):
+        all_records.append({
+            "task_type": "retrieval",
+            "input_id": f"ret_neg_{i+1:03}",
+            "document_type": "research_query",
+            "query_or_prompt": f"Unanswerable query example {i+1}",
+            "retrieval_judgment": {
+                "relevant_source_ids": [],
+                "retrieved_source_ids": [],
+                "expected_no_answer": True
+            },
+            "latency_ms": random.uniform(800, 2000)
+        })
+
+    # Reminder: Review gold_labels for accuracy before running evaluation
+
     with open("backend/evaluation/mumbai_eval_dataset.jsonl", "w") as f:
         for record in all_records:
             f.write(json.dumps(record) + "\n")

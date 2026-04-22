@@ -30,7 +30,19 @@ httpx.AsyncClient.__init__ = patched_async_httpx_init
 # ------------------------------------------------------------------
 
 # Configuration
-GROQ_API_KEY = settings.GROQ_API_KEY
+# Collect all available Groq keys
+ALL_GROQ_KEYS = [
+    k for k in [
+        settings.GROQ_API_KEY,
+        settings.GROQ_API_KEY_2,
+        settings.GROQ_API_KEY_3,
+        settings.GROQ_API_KEY_4,
+        settings.GROQ_API_KEY_5
+    ] if k
+]
+
+# Project-specific keys (separate from evaluation)
+PROJECT_GROQ_KEYS = [k for k in [settings.GROQ_API_KEY_PROJECT] if k]
 GEMINI_API_KEY = settings.GEMINI_API_KEY
 
 # Configure Gemini
@@ -60,12 +72,24 @@ class SimpleRateLimiter:
 groq_rate_limiter = SimpleRateLimiter(rate_limit=25, period=60)
 
 class LLMClient:
-    def __init__(self, groq_client: Optional[object] = None, gemini_model: Optional[genai.GenerativeModel] = None):
-        if GROQ_API_KEY and GROQ_API_KEY.strip():
-            self.groq_client = groq_client or Groq(api_key=GROQ_API_KEY)
-            print("Groq client initialized.")
+    def __init__(self, groq_client: Optional[object] = None, gemini_model: Optional[genai.GenerativeModel] = None, use_project_keys: bool = False):
+        if use_project_keys and PROJECT_GROQ_KEYS:
+            self.groq_clients = [Groq(api_key=k) for k in PROJECT_GROQ_KEYS]
+            print(f"Groq project clients initialized with {len(self.groq_clients)} keys.")
+        elif ALL_GROQ_KEYS:
+            self.groq_clients = [Groq(api_key=k) for k in ALL_GROQ_KEYS]
+            print(f"Groq clients initialized with {len(self.groq_clients)} keys.")
         else:
-            self.groq_client = None
+            self.groq_clients = []
+
+        # Scale rate limiter based on number of keys (assuming ~25 RPM per key)
+        num_keys = len(self.groq_clients)
+        if num_keys > 0:
+            groq_rate_limiter.rate_limit = 25 * num_keys
+            print(f"Groq rate limit scaled to {groq_rate_limiter.rate_limit} requests per minute.")
+
+        self.groq_key_index = 0
+        self.groq_client = self.groq_clients[0] if self.groq_clients else None
 
         if GEMINI_API_KEY and GEMINI_API_KEY.strip():
             print(f"Gemini configuring with key: {GEMINI_API_KEY[:4]}...{GEMINI_API_KEY[-4:]}")
@@ -102,25 +126,58 @@ class LLMClient:
             self.gemini_model = None
 
 
+    def _get_next_groq_client(self) -> Groq:
+        """Rotate to next Groq client for load balancing."""
+        if len(self.groq_clients) <= 1:
+            return self.groq_client
+        self.groq_key_index = (self.groq_key_index + 1) % len(self.groq_clients)
+        client = self.groq_clients[self.groq_key_index]
+        print(f"Switching to Groq key index: {self.groq_key_index + 1}/{len(self.groq_clients)}")
+        return client
+
     @backoff.on_exception(backoff.expo, Exception, max_tries=5)
-    async def generate_with_groq(self, prompt: str, model: str = "llama-3.3-70b-versatile") -> str:
-        if not self.groq_client:
+    async def generate_with_groq(self, prompt: str, model: str = "llama-3.1-8b-instant") -> str:
+        if not self.groq_clients:
             raise ValueError("Groq client not configured. Please provide a GROQ_API_KEY.")
-        
+
         await groq_rate_limiter.wait()
+
+        # Rotate to next client
+        current_client = self._get_next_groq_client()
 
         # Run synchronous Groq call in a thread pool to avoid blocking FastAPI
         loop = asyncio.get_event_loop()
-        chat_completion = await loop.run_in_executor(
-            None,
-            lambda: self.groq_client.chat.completions.create(
-                messages=[{"role": "user", "content": prompt}],
-                model=model,
-                temperature=0.7,
-                max_tokens=4096,
+        try:
+            chat_completion = await loop.run_in_executor(
+                None,
+                lambda: current_client.chat.completions.create(
+                    messages=[{"role": "user", "content": prompt}],
+                    model=model,
+                    temperature=0.7,
+                    max_tokens=4096,
+                )
             )
-        )
-        return chat_completion.choices[0].message.content
+            return chat_completion.choices[0].message.content
+        except Exception as e:
+            error_str = str(e)
+            if "rate_limit" in error_str.lower() or "429" in error_str:
+                # Try other keys on rate limit
+                for _ in range(len(self.groq_clients) - 1):
+                    current_client = self._get_next_groq_client()
+                    try:
+                        chat_completion = await loop.run_in_executor(
+                            None,
+                            lambda c=current_client: c.chat.completions.create(
+                                messages=[{"role": "user", "content": prompt}],
+                                model=model,
+                                temperature=0.7,
+                                max_tokens=4096,
+                            )
+                        )
+                        return chat_completion.choices[0].message.content
+                    except Exception:
+                        continue
+            raise
 
     @backoff.on_exception(backoff.expo, Exception, max_tries=3)
     async def generate_with_gemini(self, prompt: str) -> str:

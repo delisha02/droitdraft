@@ -118,8 +118,8 @@ def _compute_ghost_typing_metrics(records: list[EvaluationRecord]) -> dict[str, 
             sum(helpfulness_scores) / len(helpfulness_scores),
             4,
         ) if helpfulness_scores else 0.0,
-        "latency_p50_ms": _system_percentile(latencies, 50),
-        "latency_p95_ms": _system_percentile(latencies, 95),
+        "latency_p50_ms": _system_percentile(latencies, 50) if latencies else 0.0,
+        "latency_p95_ms": _system_percentile(latencies, 95) if latencies else 0.0,
     }
 
 
@@ -131,7 +131,8 @@ def _system_percentile(values: list[float], percentile: float) -> float:
         ]
     )
     metric_name = "latency_p50_ms" if percentile == 50 else "latency_p95_ms"
-    return float(system_metrics[metric_name])
+    # Return 0.0 if the metric is missing
+    return float(system_metrics.get(metric_name, 0.0))
 
 
 def format_report_markdown(report: dict[str, object]) -> str:

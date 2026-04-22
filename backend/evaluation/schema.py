@@ -26,6 +26,7 @@ class RetrievalJudgment(BaseModel):
     relevant_source_ids: list[str] = Field(default_factory=list)
     retrieved_source_ids: list[str] = Field(default_factory=list)
     cited_source_ids: list[str] = Field(default_factory=list)
+    retrieved_contents: dict[str, str] = Field(default_factory=dict, description="Mapping of source_id to document content for verification")
     expected_no_answer: bool = False
     returned_no_answer: bool = False
     faithfulness_score: float | None = Field(default=None, ge=0.0, le=1.0)
