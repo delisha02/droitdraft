@@ -69,8 +69,9 @@ To validate the system's legal accuracy and retrieval performance:
 
 ### Phase 1: Knowledge & Extraction
 - **Maharashtra Template Library**: 7 verified proformas for Wills, Sale Deeds, Probate Petitions, and Legal Notices.
-- **Evidence-Grounded Drafting**: Upload PDF/Image evidence (Death Certificates, IDs). The AI extracts facts and auto-fills the templates.
+- **Generative Information Extraction (GIE)**: Upload PDF/Image evidence (Death Certificates, IDs). The AI autonomously extracts structured legal facts and auto-fills the templates.
 - **MinIO Storage**: Secure S3-compatible storage for uploaded evidence files.
+
 
 ### Phase 2: Agentic RAG & Research
 - **Legal Research Sandbox**: Interactive sidebar for real-time legal Q&A using RAG.
@@ -88,10 +89,18 @@ To validate the system's legal accuracy and retrieval performance:
 - **Evaluation Framework**: Automated benchmarks for retrieval recall, faithfulness, and system latency.
 - **Agentic Remediation**: Automated repair passes for drafts that fail validation checks.
 
+### Phase 5: Document Export & Finalization
+- **Multi-Format Export**: One-click generation of court-ready **PDF** and editable **DOCX** files.
+- **Professional Styling**: Automated layout mapping ensuring documents meet legal formatting standards.
+- **Binary Stream Proxy**: Secure server-side generation with authentication-wrapped binary delivery.
+
+
 ### Core Features
-- **Agentic Drafting Flow**: Powered by **Llama 3.3 (Groq)** with Gemini fallback.
-- **Smart Editor**: Markdown-to-HTML rendering with automatic date injection.
-- **JWT & Session Security**: Long-lived sessions (24h) with secure JWT authentication.
+- **Agentic Drafting Flow**: Powered by **Llama 3.3 70B (Groq)** with Gemini 1.5 fallback for zero-downtime reliability.
+- **Smart Editor**: Rich-text editing with automatic date injection and citation mapping.
+- **Professional Export**: High-fidelity PDF and DOCX generation using server-side rendering.
+- **JWT & Session Security**: Secure token-based authentication with 24h session persistence.
+
 
 ---
 
