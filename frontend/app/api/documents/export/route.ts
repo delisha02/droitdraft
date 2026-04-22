@@ -2,106 +2,48 @@ import { type NextRequest, NextResponse } from "next/server"
 
 export async function POST(request: NextRequest) {
   try {
-    const { content, title, format, font, fontSize, lineHeight } = await request.json()
+    const body = await request.json()
+    const token = request.headers.get("Authorization")
 
-    // Simulate document export processing
-    await new Promise((resolve) => setTimeout(resolve, 1500))
 
-    // Create a more realistic document structure
-    const documentHTML = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>${title}</title>
-          <style>
-            body {
-              font-family: ${font || 'Times New Roman'};
-              font-size: ${fontSize || '12'}pt;
-              line-height: ${lineHeight || '1.5'};
-              margin: 1in;
-              color: #000;
-            }
-            table {
-              border-collapse: collapse;
-              width: 100%;
-            }
-            table, th, td {
-              border: 1px solid #000;
-            }
-            th, td {
-              padding: 8px;
-              text-align: left;
-            }
-            @page {
-              margin: 1in;
-            }
-          </style>
-        </head>
-        <body>
-          ${content}
-        </body>
-      </html>
-    `
 
-    if (format === "pdf") {
-      // In a real app, you'd use puppeteer, jsPDF, or similar
-      const blob = new Blob([documentHTML], { type: 'text/html' })
-      const url = URL.createObjectURL(blob)
-      
-      return NextResponse.json({
-        success: true,
-        downloadUrl: url,
-        message: "PDF generated successfully",
-        filename: `${title}.pdf`
-      })
-    } else if (format === "docx" || format === "doc") {
-      // In a real app, you'd use docx library or similar
-      const docContent = `
-        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-          <head>
-            <meta charset="utf-8">
-            <title>${title}</title>
-            <style>
-              body { font-family: ${font || 'Times New Roman'}; font-size: ${fontSize || '12'}pt; line-height: ${lineHeight || '1.5'}; }
-            </style>
-          </head>
-          <body>
-            ${content}
-          </body>
-        </html>
-      `
-      
-      const blob = new Blob([docContent], { 
-        type: format === 'docx' 
-          ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-          : 'application/msword'
-      })
-      const url = URL.createObjectURL(blob)
+    // Call the FastAPI backend for actual document generation
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/documents/export`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: token } : {}),
+      },
+      body: JSON.stringify(body),
+    })
 
-      return NextResponse.json({
-        success: true,
-        downloadUrl: url,
-        message: `${format.toUpperCase()} document generated successfully`,
-        filename: `${title}.${format}`
-      })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("Backend export failed:", errorText)
+      return NextResponse.json(
+        { success: false, message: `Backend error: ${response.status}` },
+        { status: response.status }
+      )
     }
 
-    return NextResponse.json(
-      {
-        success: false,
-        message: "Unsupported format",
+    // Get the binary data
+    const blob = await response.blob()
+    
+    // In Next.js API routes, we return the blob with appropriate headers
+    return new NextResponse(blob, {
+      status: 200,
+      headers: {
+        "Content-Type": response.headers.get("Content-Type") || "application/octet-stream",
+        "Content-Disposition": response.headers.get("Content-Disposition") || `attachment; filename="document.${body.format}"`,
       },
-      { status: 400 }
-    )
+    })
   } catch (error) {
-    console.error('Export error:', error)
+    console.error("Export proxy error:", error)
     return NextResponse.json(
-      {
-        success: false,
-        message: "Export failed",
-      },
+      { success: false, message: "Export proxy failed" },
       { status: 500 }
     )
   }
 }
+

@@ -535,9 +535,13 @@ function EditorContent() {
 
   const handleExport = async (format: "pdf" | "docx" | "doc") => {
     try {
+      const token = localStorage.getItem("accessToken")
       const response = await fetch("/api/documents/export", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify({
           content: editorRef.current?.innerHTML || "",
           title: doc.title,
@@ -548,19 +552,34 @@ function EditorContent() {
         }),
       })
 
-      const result = await response.json()
-
-      if (result.success) {
-        // Create download link
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
         const link = window.document.createElement("a")
-        link.href = result.downloadUrl
+        link.href = url
         link.download = `${doc.title}.${format}`
         window.document.body.appendChild(link)
         link.click()
         window.document.body.removeChild(link)
+        window.URL.revokeObjectURL(url)
       } else {
-        alert(`Export failed: ${result.message}`)
+        const errorData = await response.json().catch(() => ({}))
+        alert(`Export failed: ${errorData.message || response.statusText}`)
       }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     } catch (error) {
       console.error("Export error:", error)
       alert("Export failed. Please try again.")

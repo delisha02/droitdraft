@@ -125,6 +125,8 @@ graph TD
 - **Research Phase**: The Research Agent analyzes the case facts and fetches relevant statutes from ChromaDB.
 - **Drafting Phase**: The Generation Agent uses Jinja2 templates for structure and LLM synthesis for legal clauses, ensuring citations are embedded.
 - **Review Phase**: The Validation Engine checks for missing mandatory clauses (e.g., "Verification" in plaints) and ensures all mentioned dates match the evidence.
+- **Export Phase**: A dual-format engine converting internal HTML/Markdown drafts into professional **PDF** (using `xhtml2pdf`) and **DOCX** (using `python-docx`) with automated style mapping for legal fonts and layouts.
+
 
 ### ● System Analysis
 #### o Functional Requirements
@@ -132,6 +134,8 @@ graph TD
 - **FR2 (RAG)**: Must cite at least one relevant Act for every generated notice.
 - **FR3 (Ghost Flow)**: Latency $<400ms$.
 - **FR4 (Persistence)**: Save drafts in JSON format for future editing.
+- **FR5 (Multi-Format Export)**: One-click generation of court-ready PDF and editable DOCX files maintaining professional legal styling.
+
 
 #### o Non-Functional Requirements
 - **Accuracy**: Hallucination rate < 1% for legal citations.
@@ -141,6 +145,8 @@ graph TD
 #### o Software and Hardware Requirements
 - **Frontend**: Next.js 14, React 18, Tailwind CSS, Tiptap Editor.
 - **Backend**: Python 3.11, FastAPI, SQLAlchemy, Celery, Redis.
+- **Export Engine**: `python-docx`, `xhtml2pdf`, `BeautifulSoup4`.
+
 - **Database**: PostgreSQL 16, ChromaDB (HNSW index), MinIO.
 - **Hardware**: 8-core CPU, 32GB RAM, 100GB SSD (Server-side).
 

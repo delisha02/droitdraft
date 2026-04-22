@@ -136,7 +136,7 @@ class LLMClient:
         return client
 
     @backoff.on_exception(backoff.expo, Exception, max_tries=5)
-    async def generate_with_groq(self, prompt: str, model: str = "llama-3.1-8b-instant") -> str:
+    async def generate_with_groq(self, prompt: str, model: str = "llama-3.3-70b-versatile") -> str:
         if not self.groq_clients:
             raise ValueError("Groq client not configured. Please provide a GROQ_API_KEY.")
 
@@ -148,6 +148,7 @@ class LLMClient:
         # Run synchronous Groq call in a thread pool to avoid blocking FastAPI
         loop = asyncio.get_event_loop()
         try:
+            print(f"Calling Groq with model: {model}")
             chat_completion = await loop.run_in_executor(
                 None,
                 lambda: current_client.chat.completions.create(
@@ -157,14 +158,19 @@ class LLMClient:
                     max_tokens=4096,
                 )
             )
-            return chat_completion.choices[0].message.content
+            content = chat_completion.choices[0].message.content
+            if not content:
+                raise ValueError("Groq returned empty content")
+            return content
         except Exception as e:
             error_str = str(e)
+            print(f"Groq call failed: {error_str}")
             if "rate_limit" in error_str.lower() or "429" in error_str:
                 # Try other keys on rate limit
                 for _ in range(len(self.groq_clients) - 1):
                     current_client = self._get_next_groq_client()
                     try:
+                        print(f"Retrying Groq with fallback key index: {self.groq_key_index + 1}")
                         chat_completion = await loop.run_in_executor(
                             None,
                             lambda c=current_client: c.chat.completions.create(
@@ -198,10 +204,10 @@ class LLMClient:
             target_model_name = self.candidate_models[i]
             try:
                 if self.gemini_model.model_name != target_model_name and self.gemini_model.model_name != f"models/{target_model_name}":
-                    print(f"Trying fallback: {target_model_name}")
+                    print(f"Trying Gemini fallback model: {target_model_name}")
                     self.gemini_model = genai.GenerativeModel(target_model_name)
                 
-                genai.configure(api_key=settings.GEMINI_API_KEY)
+                print(f"Calling Gemini ({target_model_name})...")
                 response = await self.gemini_model.generate_content_async(prompt)
                 
                 if not response:
@@ -219,6 +225,7 @@ class LLMClient:
             except Exception as e:
                 last_error = e
                 error_msg = str(e).lower()
+                print(f"Gemini call ({target_model_name}) failed: {error_msg}")
                 if "notfound" in error_msg or "404" in error_msg or "not found" in error_msg:
                     continue
                 else:
@@ -229,10 +236,19 @@ class LLMClient:
         return "Error: All Gemini model candidates failed."
 
     async def generate(self, prompt: str, use_groq: bool = True) -> str:
-        # Use Groq only - no Gemini fallback
+        # Try Groq first
         if self.groq_client and use_groq:
-            return await self.generate_with_groq(prompt)
+            try:
+                return await self.generate_with_groq(prompt)
+            except Exception as e:
+                print(f"Groq failed, falling back to Gemini: {e}")
+        
+        # Fallback to Gemini
+        if self.gemini_model:
+            print("Using Gemini for generation...")
+            return await self.generate_with_gemini(prompt)
         else:
-            raise ValueError("Groq client not configured. Please provide a valid GROQ_API_KEY.")
+            raise ValueError("No viable LLM clients (Groq/Gemini) are configured or functional.")
+
 
 llm_client = LLMClient()
