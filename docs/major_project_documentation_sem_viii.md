@@ -462,11 +462,26 @@ The hybrid approach significantly improved the retrieval of specific statutory s
 
 
 ### ● Comparative Analysis
-| System | Citation Hallucination | Context Awareness | Drafting Speed |
+
+#### o Table 3: Comparative analysis of various input files considered for various systems
+
+| Input Format | Description | Advantages | Limitations |
 | :--- | :--- | :--- | :--- |
-| ChatGPT | 22.4% | General | 15s |
-| Indian Kanoon | 0% (Search only) | Manual | N/A |
-| **DroitDraft** | **< 1.2%** | **Local (MH)** | **12s** |
+| **PDF Files** | Portable Document Format (PDF) | Provides easy adoption with a layout that is adapted to other people's necessities. | Imposing just a single system may require different text extraction tools that can be differently expressed. |
+| **DOC Files** | Microsoft Word Document (DOC) | Drafting and choosing your own way of having a format. | The lack of support for the format of the company, and the problems of compatibility with the other programs are coming more and more often and are becoming the key various difficulties for the usual users of windows. |
+| **TXT Files** | Plain Text Files | Compared to many others, it would be a small one, but one can take care of it and makes it up to their liking. | The primary drawback of not having rich-formatting features, images, and many other content-related devices was the most prominent. |
+| **Handwritten Notes** | Handwritten Text or Scanned Images | May be added to the margin of handwritten notes, side notes, and added remarks. | This is caused by the digitization process that translates into unstructured text, and in specific cases where handwritten text is used, the results might be more accurate. |
+| **Voice Recordings** | Audio Files (MP3, WAV, etc.) | Allows a very smooth dictation and communication. | As the process is mostly dependent on the ability to transcript, it is conditioned by the quality of the audio. |
+
+#### o Table 4: Efficiency powers comparison between existing ways and the proposed system
+
+| Aspect | Traditional Manual Handling | Document Management Software | AI-Powered Legal Documentation Assistant (DroitDraft) |
+| :--- | :--- | :--- | :--- |
+| **Time Efficiency** | 20 | 10 | 5 |
+| **Accuracy** | 85% | 90% | 95% |
+| **Document Processing Speed (ppm)** | 2 | 5 | 10 |
+| **Error Rate** | 15% | 10% | 5% |
+| **Integration with Legal Databases** | No | Limited | Yes |
 
 ---
 
