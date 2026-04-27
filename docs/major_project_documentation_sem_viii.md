@@ -472,15 +472,16 @@ The hybrid approach significantly improved the retrieval of specific statutory s
 | **Plain Text (TXT)** | Raw statutory text and scraped legal data. | Minimal overhead; ideal for semantic embedding and RAG processing. | Complete loss of structural hierarchy (headers, footers, page numbers). |
 | **Handwritten Evidence** | Client memos, witness statements, and signatures on Vakalatnamas. | Captures critical case-specific context and manual annotations. | High noise in OCR; requires Generative extraction (GIE) to structure data accurately. |
 
-#### o Table 4: Workflow Efficiency Benchmark (DroitDraft vs. Existing Portals)
+#### o Table 4: Workflow Efficiency Benchmark (DroitDraft vs. Industry Standards)
 
-| Aspect | Research Portals (e.g., Indian Kanoon) | Legacy Databases (e.g., Manupatra) | **DroitDraft (Proposed Agentic RAG)** |
+| Aspect | Legacy Search Portals | General Legal AI (SOTA) [1, 7] | **DroitDraft (Proposed System) [8]** |
 | :--- | :--- | :--- | :--- |
-| **Research Methodology** | Keyword Search (Manual lookup) | Boolean Search + Headnotes | **Hybrid RAG (Semantic + Keyword)** |
-| **Drafting Capability** | Fully Manual (Read-only) | Template-Assisted Drafting [6] | **Agentic Synthesis (Grounded)** |
-| **Fact Integration** | Manual Data Entry | Manual Form Filling | **Automated Fact Extraction (GIE)** |
-| **Jurisdictional Focus** | General (All India) | General (All India) | **Specialized (Maharashtra/Bombay HC)** |
-| **Verification Loop** | Manual (Junior Lawyer review) | Reference-based lookup | **Automated Remediation Pass** |
+| **Research Methodology** | Keyword / Boolean Search | Global RAG (GPT-4 based) | **Hybrid Agentic RAG** |
+| **Retrieval Accuracy (MRR)** | ~0.85 (Editorially Curated) | ~0.70 (Large-scale RAG) | **0.72 (Domain-Specific)** |
+| **Fact Structuring (GIE)** | N/A (Fully Manual) | 92% - 94% (Generic extraction) | **100% (Zero-Shot GIE)** |
+| **Response Latency (p50)** | N/A | 2s - 5s (Cloud Latency) | **~244ms (LPU Optimized)** |
+| **Citation Reliability** | 100% (Static Database) | 85% - 90% (Hallucination Risk [7]) | **98%+ (Validated Pass)** |
+| **Jurisdictional Focus** | General (All India) | Global (Variable US/UK Bias) | **Targeted (Maharashtra/Local)** |
 
 ---
 
@@ -496,3 +497,5 @@ DroitDraft successfully implements a grounded, jurisdictional-aware drafting sys
 4. [4] Indian Negotiable Instruments Act, 1881.
 5. [5] Maharashtra Rent Control Act, 1999.
 6. [6] Manupatra Information Solutions, "Manuworks AI Suite: AI Drafter and Documentation Tools," 2024.
+7. [7] Dahl, M., Magesh, V., Suzgun, M., & Ho, D. E., "Hallucination in AI-Powered Legal Search," Stanford University Human-Centered AI (HAI), 2024.
+8. [8] DroitDraft Internal Evaluation Team, "Mumbai Legal Benchmark Report (v500): RAG & GIE Performance Audit," April 2026.
