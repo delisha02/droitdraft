@@ -59,9 +59,9 @@ The primary motivation is the **"Standardization Gap"** and **"Repetitive Drudge
 | System | Type | Key Features | Primary Mechanism |
 | :--- | :--- | :--- | :--- |
 | **Indian Kanoon** | Public Search | Massive database of judgments | Keyword indexing (Elasticsearch) |
-| **Manupatra** | Paid Portal | High-quality headnotes, filters | Manual tagging + Boolean search |
+| **Manupatra** | Legal Tech Suite | AI Drafter, Citator, Manuscript | Manual tagging + LLM (Manuworks) |
 | **ChatGPT (GPT-4)** | General AI | Conversational drafting | Probabilistic token prediction |
-| **LawGeex** | specialized AI | Contract review automation | Supervised learning on contracts |
+| **LexisNexis** | Specialized AI | Lexis Create (Drafting plugin) | RAG on global legal datasets |
 
 ### ● Limitations of Existing Systems
 - **Retrieval Gap**: Search portals provide the source but require the lawyer to manually read and extract the relevant logic.
@@ -471,17 +471,16 @@ The hybrid approach significantly improved the retrieval of specific statutory s
 | **Draft DOCX** | Legacy templates and manual drafts from senior associates. | High editability; preserves traditional legal formatting and styles. | Version control issues; lack of semantic structure in older templates. |
 | **Plain Text (TXT)** | Raw statutory text and scraped legal data. | Minimal overhead; ideal for semantic embedding and RAG processing. | Complete loss of structural hierarchy (headers, footers, page numbers). |
 | **Handwritten Evidence** | Client memos, witness statements, and signatures on Vakalatnamas. | Captures critical case-specific context and manual annotations. | High noise in OCR; requires Generative extraction (GIE) to structure data accurately. |
-| **Audio Transcripts** | Dictated legal briefs and client consultation recordings. | Facilitates rapid "hands-free" drafting for busy legal practitioners. | Quality dependent on accent/clarity; requires specialized legal transcription models. |
 
-#### o Table 4: System Performance Benchmark (DroitDraft vs. Alternatives)
+#### o Table 4: Workflow Efficiency Benchmark (DroitDraft vs. Existing Portals)
 
-| Aspect | Manual Research & Drafting | Generic Search Portals | **DroitDraft (Proposed System)** |
+| Aspect | Research Portals (e.g., Indian Kanoon) | Legacy Databases (e.g., Manupatra) | **DroitDraft (Proposed Agentic RAG)** |
 | :--- | :--- | :--- | :--- |
-| **Research Time** | ~20 Hours (Manual searching Judgments) | ~10 Hours (Keyword Search) | **< 5 Hours (AI-Powered Hybrid RAG)** |
-| **Drafting Accuracy** | 85% (Human error, fatigue) | 90% (Template-based) | **95%+ (Grounded in Verified Statutes)** |
-| **Processing Speed** | 2 pages per hour | 5 pages per hour | **10+ pages per hour (Agentic Assembly)** |
-| **Hallucination Rate** | N/A (Human) | High (if using general LLMs) | **< 1.2% (Validated by Remediation Pass)** |
-| **Legal DB Integration** | Manual Citation | Search Only | **Full Integration (Click-to-Verify)** |
+| **Research Methodology** | Keyword Search (Manual lookup) | Boolean Search + Headnotes | **Hybrid RAG (Semantic + Keyword)** |
+| **Drafting Capability** | Fully Manual (Read-only) | Template-Assisted Drafting [6] | **Agentic Synthesis (Grounded)** |
+| **Fact Integration** | Manual Data Entry | Manual Form Filling | **Automated Fact Extraction (GIE)** |
+| **Jurisdictional Focus** | General (All India) | General (All India) | **Specialized (Maharashtra/Bombay HC)** |
+| **Verification Loop** | Manual (Junior Lawyer review) | Reference-based lookup | **Automated Remediation Pass** |
 
 ---
 
@@ -496,3 +495,4 @@ DroitDraft successfully implements a grounded, jurisdictional-aware drafting sys
 3. [3] J. Devlin et al., "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding," 2018.
 4. [4] Indian Negotiable Instruments Act, 1881.
 5. [5] Maharashtra Rent Control Act, 1999.
+6. [6] Manupatra Information Solutions, "Manuworks AI Suite: AI Drafter and Documentation Tools," 2024.
